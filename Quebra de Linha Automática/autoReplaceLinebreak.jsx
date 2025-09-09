@@ -105,13 +105,13 @@ function myFindChangeByList(myObject){
 				//Ignore comment lines and blank lines.
 				if((myLine.substring(0,4)=="text")||(myLine.substring(0,4)=="grep")||(myLine.substring(0,5)=="glyph")){
 					myFindChangeArray = myLine.split("\t");
-					//The first field in the line is the findType string.
+					//Busca da string de texto, GREP ou glifo.
 					myFindType = myFindChangeArray[0];
-					//The second field in the line is the FindPreferences string.
+					//Linha de preferências de busca.
 					myFindPreferences = myFindChangeArray[1];
-					//The second field in the line is the ChangePreferences string.
+					//String de preferências de alteração.
 					myChangePreferences = myFindChangeArray[2];
-					//The fourth field is the range--used only by text find/change.
+					//Alcance da busca.
 					myFindChangeOptions = myFindChangeArray[3];
 					switch(myFindType){
 						case "text":
@@ -131,7 +131,7 @@ function myFindChangeByList(myObject){
 	}
 }
 function myFindText(myObject, myFindPreferences, myChangePreferences, myFindChangeOptions){
-	//Reset the find/change preferences before each search.
+	//Resetar as preferências de busca/troca de texto antes de cada busca.
 	app.changeTextPreferences = NothingEnum.nothing;
 	app.findTextPreferences = NothingEnum.nothing;
 	var myString = "app.findTextPreferences.properties = "+ myFindPreferences + ";";
@@ -144,7 +144,7 @@ function myFindText(myObject, myFindPreferences, myChangePreferences, myFindChan
 	app.findTextPreferences = NothingEnum.nothing;
 }
 function myFindGrep(myObject, myFindPreferences, myChangePreferences, myFindChangeOptions){
-	//Reset the find/change grep preferences before each search.
+	//Resetar as preferências de busca/troca de GREP antes de cada busca.
 	app.changeGrepPreferences = NothingEnum.nothing;
 	app.findGrepPreferences = NothingEnum.nothing;
 	var myString = "app.findGrepPreferences.properties = "+ myFindPreferences + ";";
@@ -152,12 +152,10 @@ function myFindGrep(myObject, myFindPreferences, myChangePreferences, myFindChan
 	myString += "app.findChangeGrepOptions.properties = " + myFindChangeOptions + ";";
 	app.doScript(myString, ScriptLanguage.javascript);
 	var myFoundItems = myObject.changeGrep();
-	//Reset the find/change grep preferences after each search.
 	app.changeGrepPreferences = NothingEnum.nothing;
 	app.findGrepPreferences = NothingEnum.nothing;
 }
 function myFindGlyph(myObject, myFindPreferences, myChangePreferences, myFindChangeOptions){
-	//Reset the find/change glyph preferences before each search.
 	app.changeGlyphPreferences = NothingEnum.nothing;
 	app.findGlyphPreferences = NothingEnum.nothing;
 	var myString = "app.findGlyphPreferences.properties = "+ myFindPreferences + ";";
@@ -165,7 +163,6 @@ function myFindGlyph(myObject, myFindPreferences, myChangePreferences, myFindCha
 	myString += "app.findChangeGlyphOptions.properties = " + myFindChangeOptions + ";";
 	app.doScript(myString, ScriptLanguage.javascript);
 	var myFoundItems = myObject.changeGlyph();
-	//Reset the find/change glyph preferences after each search.
 	app.changeGlyphPreferences = NothingEnum.nothing;
 	app.findGlyphPreferences = NothingEnum.nothing;
 }
@@ -175,8 +172,8 @@ function myFindFile(myFilePath){
 	var myScriptFolder = myScriptFile.path;
 	myFilePath = myScriptFolder + myFilePath;
 	if(File(myFilePath).exists == false){
-		//Display a dialog.
-		myFilePath = File.openDialog("Choose the file containing your find/change list");
+		//Em caso de quebra de busca da pasta correta para o arquivo FindChangeList.txt, abrir uma janela de diálogo para localizar o arquivo manualmente.
+		myFilePath = File.openDialog("FindChangeList.txt file não encontrado. Por favor, revincule o arquivo.);
 	}
 	return myFilePath;
 }
@@ -190,7 +187,6 @@ function myGetScriptPath(){
 	return myFile;
 }
 
-// Add this function at the end of the file:
 function replaceBackslashN(myObject) {
     app.findTextPreferences = NothingEnum.nothing;
     app.changeTextPreferences = NothingEnum.nothing;
@@ -200,8 +196,3 @@ function replaceBackslashN(myObject) {
     app.findTextPreferences = NothingEnum.nothing;
     app.changeTextPreferences = NothingEnum.nothing;
 }
-// ...existing code...
-
-
-
-// ...existing code...
