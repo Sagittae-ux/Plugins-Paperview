@@ -1,0 +1,22 @@
+//Arquivo de suporte para o script FindLinebreak.jsx, localizado na mesma pasta
+//
+//Dados delimitados por Tab, seguindo o exemplo abaixo:
+//
+//findType<tab>findProperties<tab>changeProperties<tab>findChangeOptions<tab>description
+//
+//Onde:
+//findWhat é a propriedade ou caracter a ser identificado em string de texto, changeTo é a propriedade ou caracter a ser alterado em string de texto, e as propriedades seguintes são opções de busca do InDesign.
+
+//Exemplos:
+//text	{findWhat:"--"}	{changeTo:"^_"}	{includeFootnotes:true, includeMasterPages:true, includeHiddenLayers:true, wholeWord:false}	Substituição de dois traços por um travessão, em formato string.
+
+//text	{findWhat:"ˆ\d{4}$"} {appliedCharacterStyle:"Auxiliar - Ano"} {includeFootnotes:true, includeMasterPages:true, includeHiddenLayers:true, wholeWord:false}	Aplicação de estilo de caractere em anos com 4 dígitos, em formato GREP, onde \d representa qualquer dígito e {4} representa exatamente 4 ocorrências do dígito, e $ representa o fim da linha, substituindo o estilo da string pelo estilo de caracter Auxiliar para apenas o ano.
+
+//Todas as linhas de referência devem ser organizadas abaixo do arquivo FindChangeList.txt.
+//Em caso de mais dúvidas, consultar a documentação de RegEx e ExtendedScript.
+
+
+//Inserir regras de substituição abaixo desta linha, além de uma breve explicação sobre o que o comando faz ----------->
+
+
+text	{findWhat:"\n"}	{changeTo:"¶"}	{includeFootnotes:true, includeMasterPages:true, includeHiddenLayers:true, wholeWord:false}	Substituição de caracter de quebra em código para quebra de linha literal.
