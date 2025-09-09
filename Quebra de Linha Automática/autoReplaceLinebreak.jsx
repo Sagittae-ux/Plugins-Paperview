@@ -173,7 +173,7 @@ function myFindFile(myFilePath){
 	myFilePath = myScriptFolder + myFilePath;
 	if(File(myFilePath).exists == false){
 		//Em caso de quebra de busca da pasta correta para o arquivo FindChangeList.txt, abrir uma janela de diálogo para localizar o arquivo manualmente.
-		myFilePath = File.openDialog("FindChangeList.txt file não encontrado. Por favor, revincule o arquivo.);
+		myFilePath = File.openDialog("FindChangeList.txt file não encontrado. Por favor, revincule o arquivo.");
 	}
 	return myFilePath;
 }
