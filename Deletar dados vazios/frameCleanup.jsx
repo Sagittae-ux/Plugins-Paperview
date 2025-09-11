@@ -1,8 +1,13 @@
-// Limpeza completa de texto e frames no documento InDesign
+// frameCleanup.jsx
+// Versão 1.3 - 2024-06-10
+// Dev: Alyssa Ferreiro / @Sagittae-UX
 
-// O plugin executa uma limpeza completa de dados redundantes do arquivo, ignorando camadas e frames bloqueados, identificando instâncias literais de texto vazio para solucionar erros de mesclagem de dados, removendo frames de texto e imagem vazios, ajustando frames de texto com overset e limpando quebras de texto vazias.
 
+// Esse plugin tem como objetivo realizar a automatização da limpeza de marcador de células vazias em .csv, denominado \#(em aberto, conferir com a equipe de programação), além de eliminar espaços duplos, espaços antes e depois de parágrafos, substituir a string literal "\n" por quebras de parágrafo reais, remover frames de texto e imagem vazios, ajustar frames de texto com overset e limpar quebras de texto vazias.
 
+// A ordem de operações está estruturada para facilitar debugging e manutenção, em caso de revisão, atentar-se a ordem das operações para prevenir erros.
+
+// Edições automáticas adicionais devem seguir o padrão abaixo e utilizar RegEx para identificação de string alvo. Para clareza de debug e manutenção, cada edição deve ser comentada com descrição do objetivo.
 
 (function Limpeza () {
     var doc = app.activeDocument;
@@ -12,7 +17,6 @@
     app.changeGrepPreferences = NothingEnum.nothing;
 
 
-// Edições automáticas adicionais devem seguir o padrão abaixo e utilizar RegEx para identificação de string alvo. Para clareza de debug e manutenção, cada edição deve ser comentada com descrição do objetivo.
 
 // Exemplo:     
 
@@ -28,30 +32,27 @@
     app.changeGrepPreferences.changeTo = "";
     doc.changeGrep();
 
-    // Limpeza de espaço duplo por simples
-    app.findGrepPreferences.findWhat = " {2,}";
-    app.changeGrepPreferences.changeTo = " ";
-    doc.changeGrep();
-
-    // Limpeza de quebras de texto
-    app.findGrepPreferences.findWhat = "\\r(?=\\r)";
-    app.changeGrepPreferences.changeTo = "";
-    doc.changeGrep();
-
-    // Limpeza de espaços antes do parágrafo
-    app.findGrepPreferences.findWhat = "^\\s+";
-    app.changeGrepPreferences.changeTo = "";
-    doc.changeGrep();
-
-    // Limpeza de espaços depois do parágrafo
-    app.findGrepPreferences.findWhat = "\\s+$";
-    app.changeGrepPreferences.changeTo = "";
-    doc.changeGrep();
-
-// Substituir string literal "\n" por quebra de parágrafo real
+    // Substituir string literal "\n" por quebra de parágrafo real
     app.findGrepPreferences.findWhat = "\\\\n"; // regex para literal "\n"
     app.changeGrepPreferences.changeTo = "\\r"; // insere quebra de parágrafo real
     doc.changeGrep();
+
+    // Código extra para limpeza adicional, mais intrusivo, comentar e descomentar conforme testes apresentarem necessidade.
+
+        // // Limpeza de espaço duplo por simples
+        // app.findGrepPreferences.findWhat = " {2,}";
+        // app.changeGrepPreferences.changeTo = " ";
+        // doc.changeGrep();
+
+        // // Limpeza de quebras de texto
+        // app.findGrepPreferences.findWhat = "\\r(?=\\r)";
+        // app.changeGrepPreferences.changeTo = "";
+        // doc.changeGrep();
+
+        // // Limpeza de espaços antes do parágrafo
+        // app.findGrepPreferences.findWhat = "^\\s+";
+        // app.changeGrepPreferences.changeTo = "";
+        // doc.changeGrep();
 
 
     // -------------------------------------------- Área de edição --------------------------------------------
