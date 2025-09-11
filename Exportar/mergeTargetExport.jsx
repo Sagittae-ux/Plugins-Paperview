@@ -1,16 +1,11 @@
-//Esse plugin tem como objetivo renomear e salvar o arquivo ativo do InDesign em um arquivo mesclado, baseado em um nome fixo e/ou regex encontrado no texto do documento.
-// 
-// Instruções de uso:
-// 1. Abra o InDesign e carregue o documento que deseja processar.
-// 2. Insira seu nome na variável "nomeUsuario" no início do script.
-// 3. Execute o script. Ele procurará por "diagramado_por_NOME" e substituirá pelo seu nome.
-// 4. O script também procurará por uma linha que contenha dígitos seguidos de maiúsculas no formato "123 - 456_78901-ABCD" para usar como nome do arquivo. atenção com o dado final.
-// 5. Se não encontrar, usará seu nome ou "documento" como fallback.
-// 6. Escolha a pasta onde deseja salvar o arquivo renomeado.
-// 7. O script irá salvar o arquivo como .indd e exportar um PDF usando o preset "Diagramação2022".
+// mergeTargetExport.jsx
+// Versão 1.2 - 2024-06-10
+// Dev: Alyssa Ferreiro / @Sagittae-UX
 
+// Script para InDesign que realiza a substituição de um marcador "diagramado_por_NOME" pelo nome do usuário, procura um padrão específico de nome no texto para nomear o arquivo salvo, e exporta o documento como .indd e .pdf usando uma predefinição específica.
 
-// !! O usuário deve alterar apenas a variável "nomeUsuario" abaixo para o nome desejado, e salvar outra predefinição no InDesign retirando o hífen de "Diagramação-2022".
+// ATENÇÃO: Instruções ao usuário
+// O usuário deve alterar apenas a variável "nomeUsuario" abaixo para o nome desejado, e possuir uma predefinição de exportação de .pdf de nome "Diagramação2022"(sem hífen).
 
 (function () {
     var doc;
