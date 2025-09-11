@@ -14,6 +14,7 @@
 //Todas as linhas de referência devem ser organizadas abaixo do arquivo FindChangeList.txt.
 //Em caso de mais dúvidas, consultar a documentação de RegEx e ExtendedScript.
 
+
 main();
 function main(){
     var myObject;
@@ -200,8 +201,3 @@ function replaceBackslashN(myObject) {
     app.findTextPreferences = NothingEnum.nothing;
     app.changeTextPreferences = NothingEnum.nothing;
 }
-// ...existing code...
-
-
-
-// ...existing code...
