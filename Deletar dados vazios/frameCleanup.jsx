@@ -4,7 +4,7 @@
 
 
 
-(function () {
+(function Limpeza () {
     var doc = app.activeDocument;
 
     // Remover caracatere especial representando célula vazia na tabela de dados .csv
