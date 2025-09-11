@@ -20,3 +20,5 @@
 
 
 text	{findWhat:"\n"}	{changeTo:"¶"}	{includeFootnotes:true, includeMasterPages:true, includeHiddenLayers:true, wholeWord:false}	Substituição de caracter de quebra em código para quebra de linha literal.
+
+text	{findWhat:"<<DIGITE_O_TEXTO_COMPLEMENTAR_>>"}	{changeTo:""}	{includeFootnotes:true, includeMasterPages:true, includeHiddenLayers:true, wholeWord:false}
