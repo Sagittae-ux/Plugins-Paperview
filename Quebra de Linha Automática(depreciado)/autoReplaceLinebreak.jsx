@@ -1,4 +1,9 @@
-﻿//O objetivo desse script é incluir a funcionalidade de substituir "\n" por uma quebra de linha real "^n", mas possui funcionalidade completa do FindChangeByList para que o usuário possa realizar emendas adicionais se desejar.
+﻿// autoReplaceLinebreak.jsx
+// Versão 1.2 - 9/9/2025
+// Dev: Alyssa Ferreiro / @Sagittae-UX
+
+
+//O objetivo desse script é incluir a funcionalidade de substituir "\n" por uma quebra de linha real "^n", mas possui funcionalidade completa do FindChangeByList para que o usuário possa realizar emendas adicionais se desejar.
 
 //Edições futuras devem ser feitas no arquivo incluso na pasta FindChangeSupport/FindChangeList.txt, que é lido pelo script principal, para serem feitas em texto ou GREP, seguindo os exemplos abaixo:
 
@@ -13,6 +18,11 @@
 
 //Todas as linhas de referência devem ser organizadas abaixo do arquivo FindChangeList.txt.
 //Em caso de mais dúvidas, consultar a documentação de RegEx e ExtendedScript.
+
+
+// Script depreciado pela adaptação do código para outro script mais completo: mergeTargetExport.jsx
+// Por questões de compatibilidade, o código completo do FindChangeByList.jsx foi mantido aqui, com a adição da função replaceBackslashN() e sua chamada na função main().
+
 
 main();
 function main(){
