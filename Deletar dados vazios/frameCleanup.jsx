@@ -39,20 +39,20 @@
 
     // Código extra para limpeza adicional, mais intrusivo, comentar e descomentar conforme testes apresentarem necessidade.
 
-        // // Limpeza de espaço duplo por simples
-        // app.findGrepPreferences.findWhat = " {2,}";
-        // app.changeGrepPreferences.changeTo = " ";
-        // doc.changeGrep();
+        // Limpeza de espaço duplo por simples
+        app.findGrepPreferences.findWhat = " {2,}";
+        app.changeGrepPreferences.changeTo = " ";
+        doc.changeGrep();
 
-        // // Limpeza de quebras de texto
-        // app.findGrepPreferences.findWhat = "\\r(?=\\r)";
-        // app.changeGrepPreferences.changeTo = "";
-        // doc.changeGrep();
+        // Limpeza de quebras de texto
+        app.findGrepPreferences.findWhat = "\\r(?=\\r)";
+        app.changeGrepPreferences.changeTo = "";
+        doc.changeGrep();
 
-        // // Limpeza de espaços antes do parágrafo
-        // app.findGrepPreferences.findWhat = "^\\s+";
-        // app.changeGrepPreferences.changeTo = "";
-        // doc.changeGrep();
+        // Limpeza de espaços antes do parágrafo
+        app.findGrepPreferences.findWhat = "^\\s+";
+        app.changeGrepPreferences.changeTo = "";
+        doc.changeGrep();
 
 
     // -------------------------------------------- Área de edição --------------------------------------------
