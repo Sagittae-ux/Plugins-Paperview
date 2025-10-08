@@ -1,5 +1,5 @@
 // mergeTargetExport.jsx
-// Versão 1.2 - 2024-06-10
+// Versão 1.3 - 2024-06-10
 // Dev: Alyssa Ferreiro / @Sagittae-UX
 
 // Script para InDesign que realiza a substituição de um marcador "diagramado_por_NOME" pelo nome do usuário, procura um padrão específico de nome no texto para nomear o arquivo salvo, e exporta o documento como .indd e .pdf usando uma predefinição específica.
