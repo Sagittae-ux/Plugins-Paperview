@@ -1,11 +1,11 @@
 // mergeTargetExport.jsx
-// Versão 1.3 - 2025-8-10
+// Versão 1.4 - 2025-9-10
 // Dev: Alyssa Ferreiro / @Sagittae-UX
 
 // Script para InDesign que realiza a substituição de um marcador "diagramado_por_NOME" pelo nome do usuário, procura um padrão específico de nome no texto para nomear o arquivo salvo, e exporta o documento como .indd e .pdf usando uma predefinição específica.
 
 // ATENÇÃO: Instruções ao usuário
-// O usuário deve alterar apenas a variável "nomeUsuario" abaixo para o nome desejado, e possuir uma predefinição de exportação de .pdf de nome "Diagramação2022"(sem hífen).
+// O usuário deve alterar apenas a variável "nomeUsuario" abaixo para o nome desejado, e possuir uma predefinição de exportação de .pdf de nome "Diagramacao2025".
 
 (function () {
     var doc;
@@ -91,7 +91,7 @@
             }
         }
 
-        var presetName = "Diagramação2022"; // nome exato do preset no InDesign (Predefinição não pode ter caracteres especiais como hífen)
+        var presetName = "Diagramacao2025"; // nome exato do preset no InDesign 
         var preset = app.pdfExportPresets.itemByName(presetName);
 
         if (!preset.isValid) {
