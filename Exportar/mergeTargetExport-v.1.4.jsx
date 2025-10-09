@@ -42,7 +42,7 @@
 
         // --- Passo 2: procurar RegEx do nome final
 
-    var regexNomeArquivo = /^\d+\s*-\s*\d+_\d{5,}-[A-Z]{2,6}\d{1,}/;
+    var regexNomeArquivo = /^\d+\s*-\s*\d+_\d{5,}-[A-Z]{2,6}\d*$/;
     var nomeEncontrado = null;
 
     for (var j = 0; j < doc.stories.length; j++) {
@@ -101,7 +101,6 @@
 
         doc.exportFile(ExportFormat.pdfType, caminhoPDF, false, preset);
 
-        alert("Documento salvo como:\n" + caminhoINDD.fsName + "\n\nE exportado como PDF:\n" + caminhoPDF.fsName);
 
     } catch (e) {
         alert("Erro ao salvar/exportar o documento: " + e.message);
