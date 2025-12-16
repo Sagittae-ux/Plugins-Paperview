@@ -21,7 +21,7 @@
     var nomeUsuario = "Alyssa"; // <<<---------------------------------------- altere aqui para mudar o nome
     var nomeBase = "documento"; // fallback inicial
 
-        // --- Passo 1: procurar "diagramado_por_NOME" e executar a assinatura do usuário
+    // --- Passo 1: procurar "diagramado_por_NOME" e executar a assinatura do usuário
 
     var marcadorRegex = /\bdiagramado_por_NOME\b/;
     var marcadorEncontrado = false;
@@ -40,7 +40,7 @@
         }
     }
 
-        // --- Passo 2: procurar RegEx do nome final
+    // --- Passo 2: procurar RegEx do nome final
 
     var regexNomeArquivo = /^\d+\s*-\s*\d+_\d{5,}-[A-Z]{2,6}\d*$/;
     var nomeEncontrado = null;
@@ -66,14 +66,14 @@
 
     // Monta nomes de arquivo
     var nomeArquivoINDD = nomeFinal + ".indd";
-    var nomeArquivoPDF  = nomeFinal + ".pdf";
+    var nomeArquivoPDF = nomeFinal + ".pdf";
 
     // Pergunta a pasta de destino
     var pastaDestino = Folder.selectDialog("Escolha a pasta para salvar o arquivo");
     if (!pastaDestino) return;
 
     var caminhoINDD = File(pastaDestino + "/" + nomeArquivoINDD);
-    var caminhoPDF  = File(pastaDestino + "/" + nomeArquivoPDF);
+    var caminhoPDF = File(pastaDestino + "/" + nomeArquivoPDF);
 
     try {
         // --- Exporta INDD ---
@@ -101,6 +101,18 @@
 
         doc.exportFile(ExportFormat.pdfType, caminhoPDF, false, preset);
 
+
+        try {
+            // Voltar para a primeira página do documento
+            app.activeWindow.activePage = doc.pages[0];
+
+            // Ajustar zoom para caber na janela
+            if (app.activeWindow.layoutWindows.length > 0) {
+                app.activeWindow.layoutWindows[0].zoom(ZoomOptions.FIT_SPREAD);
+            }
+        } catch (e) {
+            // Ignora erros de zoom/visualização
+        }
 
     } catch (e) {
         alert("Erro ao salvar/exportar o documento: " + e.message);

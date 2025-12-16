@@ -1,5 +1,5 @@
 // frameCleanup.jsx
-// Versão 1.3 - 2024-06-10
+// Versão 1.4 - 2024-9-10
 // Dev: Alyssa Ferreiro / @Sagittae-UX
 
 
@@ -34,25 +34,25 @@
 
     // Substituir string literal "\n" por quebra de parágrafo real
     app.findGrepPreferences.findWhat = "\\\\n"; // regex para literal "\n"
-    app.changeGrepPreferences.changeTo = "\\r"; // insere quebra de parágrafo real
+    app.changeGrepPreferences.changeTo = "\\n"; // insere quebra de linha forçada
     doc.changeGrep();
 
     // Código extra para limpeza adicional, mais intrusivo, comentar e descomentar conforme testes apresentarem necessidade.
 
-        // Limpeza de espaço duplo por simples
-        app.findGrepPreferences.findWhat = " {2,}";
-        app.changeGrepPreferences.changeTo = " ";
-        doc.changeGrep();
+        // // Limpeza de espaço duplo por simples
+        // app.findGrepPreferences.findWhat = " {2,}";
+        // app.changeGrepPreferences.changeTo = " ";
+        // doc.changeGrep();
 
-        // Limpeza de quebras de texto
-        app.findGrepPreferences.findWhat = "\\r(?=\\r)";
-        app.changeGrepPreferences.changeTo = "";
-        doc.changeGrep();
+        // // Limpeza de quebras de texto
+        // app.findGrepPreferences.findWhat = "\\r(?=\\r)";
+        // app.changeGrepPreferences.changeTo = "";
+        // doc.changeGrep();
 
-        // Limpeza de espaços antes do parágrafo
-        app.findGrepPreferences.findWhat = "^\\s+";
-        app.changeGrepPreferences.changeTo = "";
-        doc.changeGrep();
+        // // Limpeza de espaços antes do parágrafo
+        // app.findGrepPreferences.findWhat = "^\\s+";
+        // app.changeGrepPreferences.changeTo = "";
+        // doc.changeGrep();
 
 
     // -------------------------------------------- Área de edição --------------------------------------------

@@ -1,5 +1,5 @@
 // frameCleanup.jsx
-// Versão 1.4 - 2024-9-10
+// Versão 1.4
 // Dev: Alyssa Ferreiro / @Sagittae-UX
 
 
@@ -9,7 +9,7 @@
 
 // Edições automáticas adicionais devem seguir o padrão abaixo e utilizar RegEx para identificação de string alvo. Para clareza de debug e manutenção, cada edição deve ser comentada com descrição do objetivo.
 
-(function Limpeza () {
+(function Limpeza() {
     var doc = app.activeDocument;
 
     // Remover caracatere especial representando célula vazia na tabela de dados .csv
@@ -18,11 +18,11 @@
 
 
 
-// Exemplo:     
+    // Exemplo:     
 
-        // app.findGrepPreferences.findWhat = "<stringParaBusca>";
-        // app.changeGrepPreferences.changeTo = "<stringRevisada>";
-        // doc.changeGrep();
+    // app.findGrepPreferences.findWhat = "<stringParaBusca>";
+    // app.changeGrepPreferences.changeTo = "<stringRevisada>";
+    // doc.changeGrep();
 
     // -------------------------------------------- Área de edição --------------------------------------------
 
@@ -34,25 +34,25 @@
 
     // Substituir string literal "\n" por quebra de parágrafo real
     app.findGrepPreferences.findWhat = "\\\\n"; // regex para literal "\n"
-    app.changeGrepPreferences.changeTo = "\\r"; // insere quebra de linha forçada
+    app.changeGrepPreferences.changeTo = "\\n"; // insere quebra de linha forçada
     doc.changeGrep();
 
     // Código extra para limpeza adicional, mais intrusivo, comentar e descomentar conforme testes apresentarem necessidade.
 
-        // // Limpeza de espaço duplo por simples
-        // app.findGrepPreferences.findWhat = " {2,}";
-        // app.changeGrepPreferences.changeTo = " ";
-        // doc.changeGrep();
+    // // Limpeza de espaço duplo por simples
+    // app.findGrepPreferences.findWhat = " {2,}";
+    // app.changeGrepPreferences.changeTo = " ";
+    // doc.changeGrep();
 
-        // // Limpeza de quebras de texto
-        // app.findGrepPreferences.findWhat = "\\r(?=\\r)";
-        // app.changeGrepPreferences.changeTo = "";
-        // doc.changeGrep();
+    // // Limpeza de quebras de texto
+    // app.findGrepPreferences.findWhat = "\\r(?=\\r)";
+    // app.changeGrepPreferences.changeTo = "";
+    // doc.changeGrep();
 
-        // // Limpeza de espaços antes do parágrafo
-        // app.findGrepPreferences.findWhat = "^\\s+";
-        // app.changeGrepPreferences.changeTo = "";
-        // doc.changeGrep();
+    // // Limpeza de espaços antes do parágrafo
+    // app.findGrepPreferences.findWhat = "^\\s+";
+    // app.changeGrepPreferences.changeTo = "";
+    // doc.changeGrep();
 
 
     // -------------------------------------------- Área de edição --------------------------------------------
