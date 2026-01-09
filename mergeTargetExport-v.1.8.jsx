@@ -41,7 +41,7 @@
 
     // --- Passo 2: procurar RegEx do nome final
 
-    var regexNomeArquivo = /^\d+\s*-\s*\d+_\d{5,}-[A-Z]{2,}\d*$/;
+    var regexNomeArquivo = /^\d+\s*-\s*\d+_\d{5,}-\d{4,}[A-Z]{2,}\d*$/;
     var nomeEncontrado = null;
 
     for (var j = 0; j < doc.stories.length; j++) {
