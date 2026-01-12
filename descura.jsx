@@ -159,25 +159,6 @@
     }
 
     // ======================================================
-    // MÓDULO: FECHAR JANELAS DO FINDER (robusto)
-    // ======================================================
-
-    function fecharJanelasFinderInDesign() {
-        try {
-            var as =
-                'tell application "Finder"\n' +
-                'repeat with w in windows\n' +
-                'try\n' +
-                'close w\n' +
-                'end try\n' +
-                'end repeat\n' +
-                'end tell';
-
-            app.doScript(as, ScriptLanguage.applescriptLanguage);
-        } catch (_) { }
-    }
-
-    // ======================================================
     // LOOP BATCH
     // ======================================================
 
@@ -229,9 +210,21 @@
 
             var preset = app.pdfExportPresets.itemByName(PDF_PRESET);
             docMesclado.exportFile(ExportFormat.pdfType, pdf, false, preset);
+            function fecharJanelaFinder() {
+                try {
+                    var as =
+                        'tell application "Finder"\n' +
+                        '    if (count of windows) > 0 then\n' +
+                        '        close front window\n' +
+                        '    end if\n' +
+                        'end tell';
+                    app.doScript(as, ScriptLanguage.applescriptLanguage);
+                } catch (_) {
+                    // silencioso
+                }
+            }
 
             fecharJanelaFinder();
-
 
         } catch (e) {
             $.writeln("[ERRO] Exportação: " + e);
