@@ -1,6 +1,6 @@
 // descura.jsx
-// Batch CSV (1 por subpasta) → Data Merge → Mesclado → Assinatura → AutoSave
-// Versão 1.2
+// Batch CSV (1 por subpasta final) → Data Merge → Limpeza → Exportação
+// Versão 2.0 (clean / estável)
 // Dev: Alyssa Ferreiro @Sagittae-UX
 
 (function () {
@@ -17,7 +17,7 @@
     var CSV_REGEX = /\.csv$/i;
 
     // ======================================================
-    // VALIDA DOCUMENTO BASE
+    // VALIDAÇÕES INICIAIS
     // ======================================================
 
     if (app.documents.length === 0) {
@@ -38,80 +38,144 @@
     }
 
     // ======================================================
-    // FUNÇÃO: PRIMEIRO CSV RECURSIVO
+    // MÓDULO: COLETA DE CSVs (1 por pasta final)
     // ======================================================
 
-    function primeiroCSVRecursivo(pasta) {
-        var itens = pasta.getFiles();
-        for (var i = 0; i < itens.length; i++) {
-            if (itens[i] instanceof File && CSV_REGEX.test(itens[i].name)) {
-                return itens[i];
+    function coletarCSVsPorSubpastas(pastaRaiz) {
+
+        var resultados = [];
+
+        function percorrer(pasta) {
+            var itens = pasta.getFiles();
+            var achouCSV = false;
+
+            for (var i = 0; i < itens.length; i++) {
+                if (itens[i] instanceof File && CSV_REGEX.test(itens[i].name)) {
+                    resultados.push(itens[i]);
+                    achouCSV = true;
+                    break; // apenas 1 CSV por pasta
+                }
             }
-            if (itens[i] instanceof Folder) {
-                var achado = primeiroCSVRecursivo(itens[i]);
-                if (achado) return achado;
+
+            if (!achouCSV) {
+                for (var j = 0; j < itens.length; j++) {
+                    if (itens[j] instanceof Folder) {
+                        percorrer(itens[j]);
+                    }
+                }
             }
         }
-        return null;
+
+        percorrer(pastaRaiz);
+        return resultados;
     }
 
-    // ======================================================
-    // COLETA: 1 CSV POR SUBPASTA
-    // ======================================================
-
-    var csvFiles = [];
-    var subpastas = PASTA_CSV.getFiles(function (f) {
-        return f instanceof Folder;
-    });
-
-    for (var i = 0; i < subpastas.length; i++) {
-        var csv = primeiroCSVRecursivo(subpastas[i]);
-        if (csv) {
-            csvFiles.push(csv);
-            $.writeln("[OK] CSV encontrado: " + csv.fsName);
-        } else {
-            $.writeln("[INFO] Nenhum CSV em: " + subpastas[i].fsName);
-        }
-    }
+    var csvFiles = coletarCSVsPorSubpastas(PASTA_CSV);
 
     if (csvFiles.length === 0) {
-        alert("Nenhum CSV encontrado nas subpastas.");
+        alert("Nenhum CSV encontrado.");
         return;
     }
 
     // ======================================================
-    // FUNÇÃO: CRIAR DOCUMENTO MESCLADO
+    // MÓDULO: MESCLAGEM SEGURA
     // ======================================================
 
-    function criarDocumentoMesclado(docBase) {
+    function criarDocumentoMesclado(doc) {
 
-        // Guarda IDs dos documentos abertos ANTES
-        var docsAntes = {};
+        var antes = {};
         for (var i = 0; i < app.documents.length; i++) {
-            docsAntes[app.documents[i].id] = true;
+            antes[app.documents[i].id] = true;
         }
 
         try {
-            if (typeof docBase.dataMergeProperties.mergeRecords === "function") {
-                docBase.dataMergeProperties.mergeRecords();
-            } else {
-                docBase.dataMergeProperties.createMergedDocument();
-            }
-        } catch (e) {
+            doc.dataMergeProperties.mergeRecords();
+        } catch (_) {
             return null;
         }
 
-        // Procura o documento que NÃO existia antes
         for (var j = 0; j < app.documents.length; j++) {
             var d = app.documents[j];
-            if (!docsAntes[d.id]) {
-                return d; // ← este é o mesclado
-            }
+            if (!antes[d.id]) return d;
         }
 
         return null;
     }
 
+    // ======================================================
+    // MÓDULO: LIMPEZA DO DOCUMENTO
+    // ======================================================
+
+    function limparDocumento(doc) {
+
+        app.findGrepPreferences = NothingEnum.nothing;
+        app.changeGrepPreferences = NothingEnum.nothing;
+
+        app.findGrepPreferences.findWhat = "\\\\#";
+        app.changeGrepPreferences.changeTo = "";
+        doc.changeGrep();
+
+        app.findGrepPreferences.findWhat = "\\\\n";
+        app.changeGrepPreferences.changeTo = "\\n";
+        doc.changeGrep();
+
+        app.findGrepPreferences = NothingEnum.nothing;
+        app.changeGrepPreferences = NothingEnum.nothing;
+
+        var items = doc.allPageItems;
+
+        for (var i = items.length - 1; i >= 0; i--) {
+            var item = items[i];
+
+            try {
+                if (item instanceof TextFrame && !item.locked) {
+
+                    if (item.contents.replace(/\s+/g, "") === "") {
+                        item.remove();
+                        continue;
+                    }
+
+                    if (item.overflows) {
+                        var t = 0;
+                        while (item.overflows && t < 20) {
+                            item.geometricBounds = [
+                                item.geometricBounds[0],
+                                item.geometricBounds[1],
+                                item.geometricBounds[2] + 100,
+                                item.geometricBounds[3]
+                            ];
+                            t++;
+                        }
+                    }
+                }
+
+                if (item instanceof Rectangle && !item.locked) {
+                    if (item.allGraphics.length === 0) {
+                        item.remove();
+                    }
+                }
+            } catch (_) { }
+        }
+    }
+
+    // ======================================================
+    // MÓDULO: FECHAR JANELAS DO FINDER (robusto)
+    // ======================================================
+
+    function fecharJanelasFinderInDesign() {
+        try {
+            var as =
+                'tell application "Finder"\n' +
+                'repeat with w in windows\n' +
+                'try\n' +
+                'close w\n' +
+                'end try\n' +
+                'end repeat\n' +
+                'end tell';
+
+            app.doScript(as, ScriptLanguage.applescriptLanguage);
+        } catch (_) { }
+    }
 
     // ======================================================
     // LOOP BATCH
@@ -120,64 +184,33 @@
     for (var c = 0; c < csvFiles.length; c++) {
 
         var csv = csvFiles[c];
-
-        $.writeln("====================================");
-        $.writeln("PROCESSANDO: " + csv.name);
+        $.writeln("PROCESSANDO: " + csv.fsName);
 
         try {
             docBase.dataMergeProperties.selectDataSource(csv);
-            docBase.dataMergeProperties.updateDataSource();
-        } catch (e) {
-            $.writeln("[ERRO] Data Merge: " + e);
+        } catch (_) {
+            $.writeln("[ERRO] Data Merge: " + csv.name);
             continue;
         }
 
-        var docMesclado = null;
-
-        try {
-            docMesclado = criarDocumentoMesclado(docBase);
-        } catch (e) {
-            $.writeln("[ERRO] Falha ao mesclar CSV: " + csv.name);
-            continue;
-        }
+        var docMesclado = criarDocumentoMesclado(docBase);
 
         if (!docMesclado || !docMesclado.isValid || docMesclado.stories.length === 0) {
-            $.writeln("[ERRO] Mescla inválida (SKU incompatível?): " + csv.name);
-            try {
-                if (docMesclado && docMesclado.isValid) {
-                    docMesclado.close(SaveOptions.NO);
-                }
-            } catch (_) { }
+            $.writeln("[ERRO] Mescla inválida: " + csv.name);
+            try { docMesclado.close(SaveOptions.NO); } catch (_) { }
             continue;
         }
 
+        limparDocumento(docMesclado);
 
-        // Assinatura
-        var marcador = /\bdiagramado_por_NOME\b/;
-        try {
-            for (var s = 0; s < docMesclado.stories.length; s++) {
-                if (marcador.test(docMesclado.stories[s].contents)) {
-                    docMesclado.stories[s].contents =
-                        docMesclado.stories[s].contents.replace(marcador, NOME_USUARIO);
-                    break;
-                }
-            }
-        } catch (e) {
-            $.writeln("[AVISO] Falha ao aplicar assinatura: " + csv.name);
-        }
-
-
-        // Nome
+        // Nome do arquivo
         var nomeFinal = NOME_USUARIO;
         var regexNome = /^\d+\s*-\s*\d+_\d{5,}-[A-Z]{2,}\d*$/;
 
-        for (var t = 0; t < docMesclado.stories.length; t++) {
-            var linhas = docMesclado.stories[t].contents.split(/[\r\n]/);
+        for (var s = 0; s < docMesclado.stories.length; s++) {
+            var linhas = docMesclado.stories[s].contents.split(/[\r\n]/);
             for (var l = 0; l < linhas.length; l++) {
-                var linha = linhas[l]
-                    .replace(/\s+/g, " ")
-                    .replace(/^\s+|\s+$/g, "");
-                ;
+                var linha = linhas[l].replace(/^\s+|\s+$/g, "");
                 if (regexNome.test(linha)) {
                     nomeFinal = linha;
                     break;
@@ -187,27 +220,15 @@
 
         nomeFinal = nomeFinal.replace(/[\\\/:*?"<>|]/g, "_");
 
-        var pastaDestino = csv.parent;
-        var indd = File(pastaDestino + "/" + nomeFinal + ".indd");
-        var pdf = File(pastaDestino + "/" + nomeFinal + ".pdf");
+        var pasta = csv.parent;
+        var indd = File(pasta + "/" + nomeFinal + ".indd");
+        var pdf = File(pasta + "/" + nomeFinal + ".pdf");
 
         try {
             docMesclado.save(indd);
+
             var preset = app.pdfExportPresets.itemByName(PDF_PRESET);
             docMesclado.exportFile(ExportFormat.pdfType, pdf, false, preset);
-            function fecharJanelaFinder() {
-                try {
-                    var as =
-                        'tell application "Finder"\n' +
-                        '    if (count of windows) > 0 then\n' +
-                        '        close front window\n' +
-                        '    end if\n' +
-                        'end tell';
-                    app.doScript(as, ScriptLanguage.applescriptLanguage);
-                } catch (_) {
-                    // silencioso
-                }
-            }
 
             fecharJanelaFinder();
 
