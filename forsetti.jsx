@@ -32,7 +32,8 @@
     var errorCount = 0;
 
     var missingTemplateCounter = {}; // SKU → [csvs]
-    var validResults = {};    // fsName → true
+    var pastasProcessadas = {}; // fsName da pasta → true
+
 
     // ======================================================
     // VALIDAÇÕES INICIAIS
@@ -45,26 +46,42 @@
 
     // ======================================================
     // BUSCA RECURSIVA DE CSVs
+    // REGRA: APENAS 1 CSV POR SUBPASTA
     // ======================================================
 
-    function csvCollect(pasta, lista) {
-        var itens = pasta.getFiles();
-        for (var i = 0; i < itens.length; i++) {
-            if (itens[i] instanceof File && csvTarget.test(itens[i].name)) {
-                lista.push(itens[i]);
-            } else if (itens[i] instanceof Folder) {
-                csvCollect(itens[i], lista);
+    function csvCollect(pastaRaiz) {
+
+        var resultados = [];
+
+        function percorrer(pasta) {
+
+            var itens = pasta.getFiles();
+            var encontrouCSV = false;
+
+            // procura o primeiro CSV direto na pasta
+            for (var i = 0; i < itens.length; i++) {
+                if (itens[i] instanceof File && csvTarget.test(itens[i].name)) {
+                    resultados.push(itens[i]);
+                    encontrouCSV = true;
+                    break;
+                }
+            }
+
+            if (!encontrouCSV) {
+                for (var j = 0; j < itens.length; j++) {
+                    if (itens[j] instanceof Folder) {
+                        percorrer(itens[j]);
+                    }
+                }
             }
         }
+
+        percorrer(pastaRaiz);
+        return resultados;
     }
 
-    var csvFiles = [];
-    csvCollect(entryFolder, csvFiles);
+    var csvFiles = csvCollect(entryFolder);
 
-    if (!csvFiles.length) {
-        alert("Nenhum CSV encontrado.");
-        return;
-    }
 
     // ======================================================
     // PARSER DE CSV
@@ -198,11 +215,15 @@
 
         var csv = csvFiles[i];
 
-        // trava de CSV duplicado
-        if (validResults[csv.fsName]) {
-            continue;
+        // trava: apenas 1 CSV por pasta de pedido
+        var pastaPedido = csv.parent.fsName;
+
+        if (pastasProcessadas[pastaPedido]) {
+            continue; // ignora CSV duplicado na mesma pasta
         }
-        validResults[csv.fsName] = true;
+
+        pastasProcessadas[pastaPedido] = true;
+
 
         var sku = targetSKU(csv);
         if (!sku) {
