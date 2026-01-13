@@ -1,4 +1,4 @@
-// descura.jsx
+// forsetti.jsx
 // Batch CSV → SKU → Template → Data Merge → Limpeza → Exportação
 // Versão 2.1 (produção consolidada)
 // Dev: Alyssa Ferreiro @Sagittae-UX
