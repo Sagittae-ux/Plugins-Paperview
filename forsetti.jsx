@@ -1,6 +1,6 @@
 // forsetti.jsx
 // Batch CSV → SKU → Template → Data Merge → Limpeza → Exportação
-// Versão 2.1 (produção consolidada)
+// Versão 2.1 (estabilizada)
 // Dev: Alyssa Ferreiro @Sagittae-UX
 
 // O plugin tem como objetivo automatizar a mesclagem de dados a partir de .csvs
