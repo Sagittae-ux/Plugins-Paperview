@@ -3,37 +3,43 @@
 // Versão 2.1 (produção consolidada)
 // Dev: Alyssa Ferreiro @Sagittae-UX
 
+// O plugin tem como objetivo automatizar a mesclagem de dados a partir de .csvs
+// com templates do InDesign, aplicando limpeza e exportação em lote dos arquivos
+// gerados, além de renomeá-los conforme padrão específico extraído do conteúdo.
+// Alterar o caminho de arquivo das pastas de produção, templates e aplicar 
+// o nome do diagramador no módulo de configuração.
+
 (function () {
 
     // ======================================================
-    // CONFIGURAÇÕES
+    // CONFIGURAÇÕES - MUDANÇAS AQUI
     // ======================================================
 
-    var PDF_PRESET = "Diagramacao2025";
-    var FECHAR_MESCLADO = true;
+    var exportPreset = "Diagramacao2025";
+    var mergeTarget = true;
 
-    var PASTA_PRODUCAO = Folder("~/Documents/PRODUCAO");
-    var PASTA_TEMPLATES = Folder("~/Documents/TEMPLATES");
+    var entryFolder = Folder("~/Documents/PRODUCAO");
+    var rootFolder = Folder("~/Documents/TEMPLATES");
 
-    var CSV_REGEX = /\.csv$/i;
-    var nomeUsuario = "Alyssa";
-
-    // ======================================================
-    // CONTADORES / CONTROLE
-    // ======================================================
-
-    var CONT_PROCESSADOS = 0;
-    var CONT_ERROS = 0;
-
-    var TEMPLATES_FALTANDO = {}; // SKU → [csvs]
-    var CSV_PROCESSADOS = {};    // fsName → true
+    var csvTarget = /\.csv$/i;
+    var userID = "Alyssa";
 
     // ======================================================
-    // VALIDAÇÕES
+    // CONTADORES DE ERRO / CONTROLE
     // ======================================================
 
-    if (!PASTA_PRODUCAO.exists || !PASTA_TEMPLATES.exists) {
-        alert("Pastas de produção ou templates não encontradas.");
+    var processedFiles = 0;
+    var errorCount = 0;
+
+    var missingTemplateCounter = {}; // SKU → [csvs]
+    var validResults = {};    // fsName → true
+
+    // ======================================================
+    // VALIDAÇÕES INICIAIS
+    // ======================================================
+
+    if (!entryFolder.exists || !rootFolder.exists) {
+        alert("Erro: Pastas de produção ou templates não encontradas. \nRedefina os caminhos ou cheque a localização.");
         return;
     }
 
@@ -41,19 +47,19 @@
     // BUSCA RECURSIVA DE CSVs
     // ======================================================
 
-    function coletarCSVs(pasta, lista) {
+    function csvCollect(pasta, lista) {
         var itens = pasta.getFiles();
         for (var i = 0; i < itens.length; i++) {
-            if (itens[i] instanceof File && CSV_REGEX.test(itens[i].name)) {
+            if (itens[i] instanceof File && csvTarget.test(itens[i].name)) {
                 lista.push(itens[i]);
             } else if (itens[i] instanceof Folder) {
-                coletarCSVs(itens[i], lista);
+                csvCollect(itens[i], lista);
             }
         }
     }
 
     var csvFiles = [];
-    coletarCSVs(PASTA_PRODUCAO, csvFiles);
+    csvCollect(entryFolder, csvFiles);
 
     if (!csvFiles.length) {
         alert("Nenhum CSV encontrado.");
@@ -61,7 +67,7 @@
     }
 
     // ======================================================
-    // CSV → SKU (2ª COLUNA)
+    // PARSER DE CSV
     // ======================================================
 
     function parseCSVLine(line) {
@@ -76,31 +82,31 @@
         return r;
     }
 
-    function extrairSKU(csv) {
+    function targetSKU(csv) {
         csv.encoding = "UTF-16";
         if (!csv.open("r")) return null;
 
         var txt = csv.read();
         csv.close();
 
-        var linhas = txt.split(/\r\n|\n|\r/);
-        if (linhas.length < 2) return null;
+        var csvCell = txt.split(/\r\n|\n|\r/);
+        if (csvCell.length < 2) return null;
 
-        var cols = parseCSVLine(linhas[1]);
+        var cols = parseCSVLine(csvCell[1]);
         if (cols.length < 2) return null;
 
         return cols[1].replace(/^\s+|\s+$/g, "");
     }
 
     // ======================================================
-    // MESCLAGEM SEGURA
+    // MESCLAGEM
     // ======================================================
 
-    function criarDocumentoMesclado(docBase) {
+    function mergeFile(docBase) {
 
-        var antes = {};
+        var root = {};
         for (var i = 0; i < app.documents.length; i++) {
-            antes[app.documents[i].id] = true;
+            root[app.documents[i].id] = true;
         }
 
         try {
@@ -110,7 +116,7 @@
         }
 
         for (var j = 0; j < app.documents.length; j++) {
-            if (!antes[app.documents[j].id]) {
+            if (!root[app.documents[j].id]) {
                 return app.documents[j];
             }
         }
@@ -122,7 +128,7 @@
     // REGISTRO DO DIAGRAMADOR
     // ======================================================
 
-    function aplicarNomeDiagramador(doc, nome) {
+    function userIdentifier(doc, nome) {
         var regex = /\bdiagramado_por_NOME\b/;
         for (var i = 0; i < doc.stories.length; i++) {
             if (regex.test(doc.stories[i].contents)) {
@@ -133,10 +139,10 @@
     }
 
     // ======================================================
-    // LIMPEZA DO DOCUMENTO
+    // MÓDULO - LIMPEZA DO DOCUMENTO
     // ======================================================
 
-    function limparDocumento(doc) {
+    function fileCleanup(doc) {
 
         app.findGrepPreferences = NothingEnum.nothing;
         app.changeGrepPreferences = NothingEnum.nothing;
@@ -164,17 +170,17 @@
     }
 
     // ======================================================
-    // NOME FINAL (REGEX NA OP)
+    // RENOMEAÇÃO DE ARQUIVO
     // ======================================================
 
-    function extrairNomeFinal(doc, fallback) {
+    function serialNumberGen(doc, fallback) {
 
         var regex = /^\d+\s*-\s*\d+_\d{5,}-[A-Z]{2,}\d*$/;
 
         for (var s = 0; s < doc.stories.length; s++) {
-            var linhas = doc.stories[s].contents.split(/[\r\n]+/);
-            for (var l = 0; l < linhas.length; l++) {
-                var linha = linhas[l].replace(/^\s+|\s+$/g, "");
+            var csvCell = doc.stories[s].contents.split(/[\r\n]+/);
+            for (var l = 0; l < csvCell.length; l++) {
+                var linha = csvCell[l].replace(/^\s+|\s+$/g, "");
                 if (regex.test(linha)) {
                     return linha.replace(/[\\\/:*?"<>|]/g, "_");
                 }
@@ -185,32 +191,32 @@
     }
 
     // ======================================================
-    // LOOP PRINCIPAL
+    // MÓDULO - EXPORTAÇÃO EM LOTE
     // ======================================================
 
     for (var i = 0; i < csvFiles.length; i++) {
 
         var csv = csvFiles[i];
 
-        // 🔒 trava de CSV duplicado
-        if (CSV_PROCESSADOS[csv.fsName]) {
+        // trava de CSV duplicado
+        if (validResults[csv.fsName]) {
             continue;
         }
-        CSV_PROCESSADOS[csv.fsName] = true;
+        validResults[csv.fsName] = true;
 
-        var sku = extrairSKU(csv);
+        var sku = targetSKU(csv);
         if (!sku) {
-            CONT_ERROS++;
+            errorCount++;
             continue;
         }
 
-        var template = File(PASTA_TEMPLATES + "/" + sku + ".indt");
+        var template = File(rootFolder + "/" + sku + ".indt");
         if (!template.exists) {
 
-            if (!TEMPLATES_FALTANDO[sku]) {
-                TEMPLATES_FALTANDO[sku] = [];
+            if (!missingTemplateCounter[sku]) {
+                missingTemplateCounter[sku] = [];
             }
-            TEMPLATES_FALTANDO[sku].push(csv.name);
+            missingTemplateCounter[sku].push(csv.name);
             continue;
         }
 
@@ -219,34 +225,34 @@
             docBase = app.open(template, false);
             docBase.dataMergeProperties.selectDataSource(csv);
         } catch (_) {
-            CONT_ERROS++;
+            errorCount++;
             try { docBase.close(SaveOptions.NO); } catch (_) { }
             continue;
         }
 
-        var docMesclado = criarDocumentoMesclado(docBase);
-        if (!docMesclado) {
-            CONT_ERROS++;
+        var mergedDocument = mergeFile(docBase);
+        if (!mergedDocument) {
+            errorCount++;
             docBase.close(SaveOptions.NO);
             continue;
         }
 
-        aplicarNomeDiagramador(docMesclado, nomeUsuario);
-        limparDocumento(docMesclado);
+        userIdentifier(mergedDocument, userID);
+        fileCleanup(mergedDocument);
 
-        var nomeFinal = extrairNomeFinal(docMesclado, sku);
+        var nomeFinal = serialNumberGen(mergedDocument, sku);
         var pasta = csv.parent;
 
         try {
-            docMesclado.save(File(pasta + "/" + nomeFinal + ".indd"));
-            docMesclado.exportFile(
+            mergedDocument.save(File(pasta + "/" + nomeFinal + ".indd"));
+            mergedDocument.exportFile(
                 ExportFormat.pdfType,
                 File(pasta + "/" + nomeFinal + ".pdf"),
                 false,
-                app.pdfExportPresets.itemByName(PDF_PRESET)
+                app.pdfExportPresets.itemByName(exportPreset)
             );
 
-            CONT_PROCESSADOS++;
+            processedFiles++;
 
             try {
                 app.doScript(
@@ -258,10 +264,10 @@
             } catch (_) { }
 
         } catch (_) {
-            CONT_ERROS++;
+            errorCount++;
         }
 
-        if (FECHAR_MESCLADO) docMesclado.close(SaveOptions.NO);
+        if (mergeTarget) mergedDocument.close(SaveOptions.NO);
         docBase.close(SaveOptions.NO);
     }
 
@@ -271,15 +277,15 @@
 
     var msg =
         "Batch finalizado.\n\n" +
-        "Processados: " + CONT_PROCESSADOS + "\n" +
-        "Erros: " + CONT_ERROS;
+        "Processados: " + processedFiles + "\n" +
+        "Erros: " + errorCount;
 
-    var temFaltantes = false;
-    for (var k in TEMPLATES_FALTANDO) { temFaltantes = true; break; }
+    var missingTemplates = false;
+    for (var k in missingTemplateCounter) { missingTemplates = true; break; }
 
-    if (temFaltantes) {
+    if (missingTemplates) {
         msg += "\n\nTemplates faltando (SKU):";
-        for (var k in TEMPLATES_FALTANDO) {
+        for (var k in missingTemplateCounter) {
             msg += "\n- " + k;
         }
     }
