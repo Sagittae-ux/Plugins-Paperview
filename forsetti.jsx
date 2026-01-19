@@ -1,6 +1,6 @@
 // forsetti.jsx
 // Batch CSV → SKU → Template → Data Merge → Limpeza → Exportação
-// Versão 2.1 + LOG
+// Versão 2.1
 // Dev: Alyssa Ferreiro @Sagittae-UX
 
 (function () {
@@ -22,7 +22,7 @@
     // LOG DE PROCESSO  (NOVO)
     // ======================================================
 
-    var logFile = File(entryFolder + "/relatório_de_lote.txt");
+    var logFile = File(entryFolder + "/relatório.txt");
 
     function log(msg) {
         try {
@@ -61,7 +61,6 @@
 
     // ======================================================
     // BUSCA RECURSIVA DE CSVs
-    // REGRA: APENAS 1 CSV POR SUBPASTA
     // ======================================================
 
     function csvCollect(pastaRaiz) {
@@ -277,6 +276,22 @@
             log("ERRO: Falha na mesclagem: " + csv.name);
             docBase.close(SaveOptions.NO);
             continue;
+        }
+        var mergedDocument = mergeFile(docBase);
+        if (!mergedDocument) {
+            errorCount++;
+            log("ERRO: Falha na mesclagem: " + csv.name);
+            docBase.close(SaveOptions.NO);
+            continue;
+        }
+
+        try {
+            if (mergedDocument.crossReferenceSources.length > 0) {
+                mergedDocument.crossReferenceSources.everyItem().update();
+                log("Referências cruzadas atualizadas.");
+            }
+        } catch (_) {
+            log("AVISO: Falha ao atualizar referências cruzadas.");
         }
 
         userIdentifier(mergedDocument, userID);
