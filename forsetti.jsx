@@ -1,13 +1,7 @@
 // forsetti.jsx
 // Batch CSV → SKU → Template → Data Merge → Limpeza → Exportação
-// Versão 2.1 (estabilizada)
+// Versão 2.1 + LOG
 // Dev: Alyssa Ferreiro @Sagittae-UX
-
-// O plugin tem como objetivo automatizar a mesclagem de dados a partir de .csvs
-// com templates do InDesign, aplicando limpeza e exportação em lote dos arquivos
-// gerados, além de renomeá-los conforme padrão específico extraído do conteúdo.
-// Alterar o caminho de arquivo das pastas de produção, templates e aplicar 
-// o nome do diagramador no módulo de configuração.
 
 (function () {
 
@@ -25,6 +19,27 @@
     var userID = "Alyssa";
 
     // ======================================================
+    // LOG DE PROCESSO  (NOVO)
+    // ======================================================
+
+    var logFile = File(entryFolder + "/relatório_de_lote.txt");
+
+    function log(msg) {
+        try {
+            logFile.open("a");
+            logFile.writeln(msg);
+            logFile.close();
+        } catch (_) { }
+    }
+
+    // cabeçalho do log
+    log("\n========================================");
+    log("INÍCIO DO LOTE: " + new Date());
+    log("Usuário: " + userID);
+    log("Pasta de entrada: " + entryFolder.fsName);
+    log("========================================\n");
+
+    // ======================================================
     // CONTADORES DE ERRO / CONTROLE
     // ======================================================
 
@@ -34,13 +49,13 @@
     var missingTemplateCounter = {}; // SKU → [csvs]
     var pastasProcessadas = {}; // fsName da pasta → true
 
-
     // ======================================================
     // VALIDAÇÕES INICIAIS
     // ======================================================
 
     if (!entryFolder.exists || !rootFolder.exists) {
         alert("Erro: Pastas de produção ou templates não encontradas. \nRedefina os caminhos ou cheque a localização.");
+        log("ERRO FATAL: Pastas de produção ou templates não encontradas.");
         return;
     }
 
@@ -58,7 +73,6 @@
             var itens = pasta.getFiles();
             var encontrouCSV = false;
 
-            // procura o primeiro CSV direto na pasta
             for (var i = 0; i < itens.length; i++) {
                 if (itens[i] instanceof File && csvTarget.test(itens[i].name)) {
                     resultados.push(itens[i]);
@@ -81,7 +95,7 @@
     }
 
     var csvFiles = csvCollect(entryFolder);
-
+    log("CSVs encontrados: " + csvFiles.length);
 
     // ======================================================
     // PARSER DE CSV
@@ -214,22 +228,25 @@
     for (var i = 0; i < csvFiles.length; i++) {
 
         var csv = csvFiles[i];
-
-        // trava: apenas 1 CSV por pasta de pedido
         var pastaPedido = csv.parent.fsName;
 
         if (pastasProcessadas[pastaPedido]) {
-            continue; // ignora CSV duplicado na mesma pasta
+            log("IGNORADO (CSV duplicado na pasta): " + csv.fsName);
+            continue;
         }
 
         pastasProcessadas[pastaPedido] = true;
 
+        log("\n--- Processando CSV: " + csv.fsName);
 
         var sku = targetSKU(csv);
         if (!sku) {
             errorCount++;
+            log("ERRO: Não foi possível ler SKU em " + csv.name);
             continue;
         }
+
+        log("SKU identificado: " + sku);
 
         var template = File(rootFolder + "/" + sku + ".indt");
         if (!template.exists) {
@@ -238,6 +255,8 @@
                 missingTemplateCounter[sku] = [];
             }
             missingTemplateCounter[sku].push(csv.name);
+
+            log("TEMPLATE FALTANDO: " + sku + " (CSV: " + csv.name + ")");
             continue;
         }
 
@@ -247,6 +266,7 @@
             docBase.dataMergeProperties.selectDataSource(csv);
         } catch (_) {
             errorCount++;
+            log("ERRO: Falha ao abrir template ou associar CSV: " + csv.name);
             try { docBase.close(SaveOptions.NO); } catch (_) { }
             continue;
         }
@@ -254,6 +274,7 @@
         var mergedDocument = mergeFile(docBase);
         if (!mergedDocument) {
             errorCount++;
+            log("ERRO: Falha na mesclagem: " + csv.name);
             docBase.close(SaveOptions.NO);
             continue;
         }
@@ -265,15 +286,22 @@
         var pasta = csv.parent;
 
         try {
-            mergedDocument.save(File(pasta + "/" + nomeFinal + ".indd"));
+            var inddFile = File(pasta + "/" + nomeFinal + ".indd");
+            var pdfFile = File(pasta + "/" + nomeFinal + ".pdf");
+
+            mergedDocument.save(inddFile);
             mergedDocument.exportFile(
                 ExportFormat.pdfType,
-                File(pasta + "/" + nomeFinal + ".pdf"),
+                pdfFile,
                 false,
                 app.pdfExportPresets.itemByName(exportPreset)
             );
 
             processedFiles++;
+
+            log("EXPORTADO:");
+            log("  INDD → " + inddFile.fsName);
+            log("  PDF  → " + pdfFile.fsName);
 
             try {
                 app.doScript(
@@ -286,6 +314,7 @@
 
         } catch (_) {
             errorCount++;
+            log("ERRO: Falha ao salvar/exportar: " + nomeFinal);
         }
 
         if (mergeTarget) mergedDocument.close(SaveOptions.NO);
@@ -293,7 +322,7 @@
     }
 
     // ======================================================
-    // ALERT FINAL
+    // ALERT FINAL + FECHAMENTO DO LOG
     // ======================================================
 
     var msg =
@@ -308,9 +337,16 @@
         msg += "\n\nTemplates faltando (SKU):";
         for (var k in missingTemplateCounter) {
             msg += "\n- " + k;
+            log("RESUMO - TEMPLATE FALTANDO: " + k);
         }
     }
 
-    alert(msg);
+    log("\n========================================");
+    log("FIM DO LOTE: " + new Date());
+    log("Processados: " + processedFiles);
+    log("Erros: " + errorCount);
+    log("========================================\n");
+
+    // alert(msg);
 
 })();
