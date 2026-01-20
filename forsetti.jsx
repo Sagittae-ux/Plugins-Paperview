@@ -19,6 +19,18 @@
     var userID = "Alyssa";
 
     // ======================================================
+    // LISTA NEGRA - INCLUIR SKUs AQUI
+    // ======================================================
+
+    // Sintaxe:
+    // ignoredSKUs["SKU_A_IGNORAR"] = true,
+    // ignoredSKUs["SKU_B_IGNORAR" = true,
+
+    var ignoredSKUs = {
+        "MD890": true
+    };
+
+    // ======================================================
     // LOG DE PROCESSO
     // ======================================================
 
@@ -45,9 +57,18 @@
 
     var processedFiles = 0;
     var errorCount = 0;
+    var totalBlacklistedFiles = 0;
+    var totalBlacklistedSKUs = 0;
+
 
     var missingTemplateCounter = {}; // SKU → [csvs]
     var pastasProcessadas = {}; // fsName da pasta → true
+    var blacklistCounter = {}; // SKU → { count: n, files: [] }
+
+    var ignoredFolder = Folder(entryFolder + "/_IGNORADOS");
+    if (!ignoredFolder.exists) {
+        ignoredFolder.create();
+    }
 
     // ======================================================
     // VALIDAÇÕES INICIAIS
@@ -58,6 +79,63 @@
         log("Erro: Caminho de pasta inválido.");
         return;
     }
+
+    function isIgnoredSKU(sku) {
+        return ignoredSKUs[sku] === true;
+    }
+
+    function blacklistFile(sku, csvFile, reason) {
+
+        if (!blacklistCounter[sku]) {
+            blacklistCounter[sku] = {
+                count: 0,
+                files: []
+            };
+            totalBlacklistedSKUs++;
+        }
+
+        blacklistCounter[sku].count++;
+        blacklistCounter[sku].files.push(csvFile.name);
+        totalBlacklistedFiles++;
+
+        var pastaPedido = csvFile.parent; // pasta inteira do pedido
+        var destinoBase = ignoredFolder;  // _IGNORADOS
+        var targetPath = Folder(destinoBase + "/" + pastaPedido.name);
+
+        // mover a pasta inteira apenas uma vez
+        if (!targetPath.exists) {
+            try {
+                // FECHA QUALQUER HANDLE ABERTO DO CSV
+                try { csvFile.close(); } catch (_) { }
+
+                var origem = pastaPedido.parent.fsName;
+                var destino = ignoredFolder.fsName;
+
+                // AppleScript para mover a pasta no Finder
+                var as =
+                    'tell application "Finder"\n' +
+                    '    if exists POSIX file "' + origem + '" then\n' +
+                    '        move POSIX file "' + origem + '" to POSIX file "' + destino + '"\n' +
+                    '    end if\n' +
+                    'end tell';
+
+                app.doScript(as, ScriptLanguage.applescriptLanguage);
+
+                log("PASTA MOVIDA PARA _IGNORADOS (AppleScript): " + pastaPedido.name);
+
+            } catch (e) {
+                log("ERRO AO MOVER PASTA PARA _IGNORADOS (AS): " + pastaPedido.fsName);
+                log("DETALHE: " + e.message);
+            }
+
+        } else {
+            log("AVISO: Pasta já existe em _IGNORADOS: " + pastaPedido.name);
+        }
+    }
+
+
+
+
 
     // ======================================================
     // BUSCA RECURSIVA DE CSVs
@@ -247,6 +325,24 @@
 
         log("SKU identificado: " + sku);
 
+        // ==========================================
+        // LISTA NEGRA DE SKUs (PROCESSO MANUAL)
+        // ==========================================
+
+        if (isIgnoredSKU(sku)) {
+
+            log("SKU EM LISTA MANUAL — IGNORADO: " + sku);
+
+            blacklistFile(
+                sku,
+                csv,
+                "SKU marcado para processamento manual"
+            );
+
+            // não tenta template, não tenta mesclar
+            continue;
+        }
+
         var template = File(rootFolder + "/" + sku + ".indt");
         if (!template.exists) {
 
@@ -342,10 +438,24 @@
     // ALERT FINAL + FECHAMENTO DO LOG
     // ======================================================
 
+    for (var s in blacklistCounter) {
+
+        log("SKU: " + s);
+        log(" Ocorrências: " + blacklistCounter[s].count);
+
+        for (var j = 0; j < blacklistCounter[s].files.length; j++) {
+            log("   - " + blacklistCounter[s].files[j]);
+        }
+
+        log("");
+    }
+
     var msg =
         "Batch finalizado.\n\n" +
         "Processados: " + processedFiles + "\n" +
-        "Erros: " + errorCount;
+        "Erros: " + errorCount + "\n" +
+        "Ignorados (movidos): " + totalBlacklistedFiles;
+
 
     var missingTemplates = false;
     for (var k in missingTemplateCounter) { missingTemplates = true; break; }
@@ -362,6 +472,7 @@
     log("FIM DO LOTE: " + new Date());
     log("Processados: " + processedFiles);
     log("Erros: " + errorCount);
+    log("Ignorados (movidos): " + totalBlacklistedFiles);
     if (missingTemplates) {
         log("Templates faltando (SKUs):");
         for (var k in missingTemplateCounter) {
