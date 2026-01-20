@@ -1,6 +1,6 @@
 // forsetti.jsx
 // Batch CSV → SKU → Template → Data Merge → Limpeza → Exportação
-// Versão 2.1
+// Versão 2.3
 // Dev: Alyssa Ferreiro @Sagittae-UX
 
 (function () {
@@ -19,7 +19,7 @@
     var userID = "Alyssa";
 
     // ======================================================
-    // LOG DE PROCESSO  (NOVO)
+    // LOG DE PROCESSO
     // ======================================================
 
     var logFile = File(entryFolder + "/relatório.txt");
@@ -54,8 +54,8 @@
     // ======================================================
 
     if (!entryFolder.exists || !rootFolder.exists) {
-        alert("Erro: Pastas de produção ou templates não encontradas. \nRedefina os caminhos ou cheque a localização.");
-        log("ERRO FATAL: Pastas de produção ou templates não encontradas.");
+        alert("Erro: O caminho da pasta de produção ou templates não foi encontrado.\nVerifique as configurações no início do script e cole o caminho de arquivo na linha 'var entryFolder' e 'var rootFolder'.");
+        log("Erro: Caminho de pasta inválido.");
         return;
     }
 
@@ -67,7 +67,7 @@
 
         var resultados = [];
 
-        function percorrer(pasta) {
+        function parse(pasta) {
 
             var itens = pasta.getFiles();
             var encontrouCSV = false;
@@ -83,13 +83,13 @@
             if (!encontrouCSV) {
                 for (var j = 0; j < itens.length; j++) {
                     if (itens[j] instanceof Folder) {
-                        percorrer(itens[j]);
+                        parse(itens[j]);
                     }
                 }
             }
         }
 
-        percorrer(pastaRaiz);
+        parse(pastaRaiz);
         return resultados;
     }
 
@@ -290,12 +290,12 @@
         userIdentifier(mergedDocument, userID);
         fileCleanup(mergedDocument);
 
-        var nomeFinal = serialNumberGen(mergedDocument, sku);
+        var exportName = serialNumberGen(mergedDocument, sku);
         var pasta = csv.parent;
 
         try {
-            var inddFile = File(pasta + "/" + nomeFinal + ".indd");
-            var pdfFile = File(pasta + "/" + nomeFinal + ".pdf");
+            var inddFile = File(pasta + "/" + exportName + ".indd");
+            var pdfFile = File(pasta + "/" + exportName + ".pdf");
 
             mergedDocument.save(inddFile);
             mergedDocument.exportFile(
@@ -362,8 +362,17 @@
     log("FIM DO LOTE: " + new Date());
     log("Processados: " + processedFiles);
     log("Erros: " + errorCount);
+    if (missingTemplates) {
+        log("Templates faltando (SKUs):");
+        for (var k in missingTemplateCounter) {
+            log(" - " + k)
+        }
+    } else {
+        log("Sem templates faltando.");
+    }
+
     log("========================================\n");
 
-    // alert(msg);
+    alert(msg);
 
 })();
