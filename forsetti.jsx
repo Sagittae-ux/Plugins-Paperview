@@ -277,13 +277,6 @@
             docBase.close(SaveOptions.NO);
             continue;
         }
-        var mergedDocument = mergeFile(docBase);
-        if (!mergedDocument) {
-            errorCount++;
-            log("ERRO: Falha na mesclagem: " + csv.name);
-            docBase.close(SaveOptions.NO);
-            continue;
-        }
 
         try {
             if (mergedDocument.crossReferenceSources.length > 0) {
@@ -319,20 +312,29 @@
             log("  PDF  → " + pdfFile.fsName);
 
             try {
-                app.doScript(
+                var as =
                     'tell application "Finder"\n' +
-                    'if (count of windows) > 0 then close front window\n' +
-                    'end tell',
-                    ScriptLanguage.applescriptLanguage
-                );
-            } catch (_) { }
+                    '    if (count of windows) > 0 then\n' +
+                    '        close front window\n' +
+                    '    end if\n' +
+                    'end tell';
 
-        } catch (_) {
-            errorCount++;
-            log("ERRO: Falha ao salvar/exportar: " + nomeFinal);
+                app.doScript(as, ScriptLanguage.applescriptLanguage);
+            } catch (e) { }
+
+        } catch (e) {
+            alert("Erro ao salvar/exportar o documento: " + e.message);
         }
 
-        if (mergeTarget) mergedDocument.close(SaveOptions.NO);
+        // FECHAR DOCUMENTO MESCLADO
+        try {
+            mergedDocument.close(SaveOptions.NO);
+            log("Documento mesclado fechado.");
+        } catch (_) {
+            log("AVISO: Falha ao fechar documento mesclado.");
+        }
+
+        // FECHAR TEMPLATE BASE
         docBase.close(SaveOptions.NO);
     }
 
