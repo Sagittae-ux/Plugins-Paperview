@@ -283,7 +283,7 @@
 
     function serialNumberGen(doc, fallback) {
 
-        var regex = /^\d+\s*-\s*\d+_\d{5,}-[A-Z]{2,}\d*$/;
+        var regex = /^\d{2,}\s*-\s*\d{2,}_\d{5,}-[A-Z0-9]+$/;
 
         for (var s = 0; s < doc.stories.length; s++) {
             var csvCell = doc.stories[s].contents.split(/[\r\n]+/);
