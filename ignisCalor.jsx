@@ -1,7 +1,41 @@
-// forsetti.jsx
+// ignisCalor.jsx
 // Batch CSV → SKU → Template → Data Merge → Limpeza → Exportação
-// Versão 2.3
+// Versão 3.0
 // Dev: Alyssa Ferreiro @Sagittae-UX
+
+// Esse script automatiza o processo de diagramação em lote no Adobe InDesign,
+// atuando como o novo motor central para a tarefa de mesclagem preliminar de
+// processamento de pedidos.
+
+
+// RECURSOS PRINCIPAIS:
+// - Busca recursiva de arquivos CSV em subpastas.
+// - Identificação automática de SKU a partir do conteúdo do CSV através de parsing da segunda coluna.
+// - Associação dinâmica de templates baseados no SKU.
+// - Mesclagem de dados utilizando o recurso Data Merge do InDesign.
+// - Limpeza automática do documento mesclado (remoção de marcadores, quadros vazios, etc.).
+// - Exportação em lote para formatos INDD e PDF com presets definidos.
+// - Registro detalhado de processos, erros e SKUs ignorados em um arquivo de log.
+
+
+// INSTRUÇÕES DE USO:
+// 1. Configure as variáveis no início do script (pasta de entrada, pasta de templates, e nome do diagramador).
+
+// 2. Adicione SKUs à lista negra quando necessário. Os arquivos serão catalogados
+// e movidos para a pasta "_IGNORADOS", onde deverão ser processados manualmente.
+
+// 3. Execute o script no Adobe InDesign.
+
+// 4. Ao final do processamento, um relatório será gerado na pasta de entrada,
+// detalhando o número de arquivos processados, erros encontrados e SKUs ignorados.
+
+// 5. Caso faltem templates para determinados SKUs, esses serão listados no relatório final.
+// Ajustar e incluir bases conforme necessário, respeitando a sintaxe de array abaixo:
+
+// ignoredSKUs["SKU_A_IGNORAR"] = true,
+// ignoredSKUs["SKU_B_IGNORAR" = true,
+
+// Em caso de dúvidas ou necessidade de suporte, entre em contato com Alyssa Ferreiro @Sagittae-UX >:3c
 
 (function () {
 
@@ -10,7 +44,6 @@
     // ======================================================
 
     var exportPreset = "Diagramacao2025";
-    var mergeTarget = true;
 
     var entryFolder = Folder("~/Documents/PRODUCAO");
     var rootFolder = Folder("~/Documents/TEMPLATES");
@@ -19,12 +52,11 @@
     var userID = "Alyssa";
 
     // ======================================================
-    // LISTA NEGRA - INCLUIR SKUs AQUI
+    // LISTA NEGRA - SKUs PARA PROCESSAMENTO MANUAL AQUI
     // ======================================================
 
-    // Sintaxe:
-    // ignoredSKUs["SKU_A_IGNORAR"] = true,
-    // ignoredSKUs["SKU_B_IGNORAR" = true,
+    // Referir-se ao passo 5 das instruções acima para sintaxe correta.
+    // Lista reservada para itens problemáticos ou que exigem diagramação especial.
 
     var ignoredSKUs = {
         "MD890": true
@@ -34,7 +66,6 @@
     // LOG DE PROCESSO
     // ======================================================
 
-    // Relatório de
     var logFile = File(entryFolder + "/relatório.txt");
 
     function log(msg) {
@@ -45,7 +76,7 @@
         } catch (_) { }
     }
 
-    // cabeçalho do log
+    // Cabeçalho do log
     log("\n========================================");
     log("INÍCIO DO LOTE: " + new Date());
     log("Usuário: " + userID);
@@ -75,6 +106,7 @@
     // VALIDAÇÕES INICIAIS
     // ======================================================
 
+    // Check para pastas de entrada e templates. 
     if (!entryFolder.exists || !rootFolder.exists) {
         alert("Erro: O caminho da pasta de produção ou templates não foi encontrado.\nVerifique as configurações no início do script e cole o caminho de arquivo na linha 'var entryFolder' e 'var rootFolder'.");
         log("Erro: Caminho de pasta inválido.");
@@ -85,6 +117,7 @@
         return ignoredSKUs[sku] === true;
     }
 
+    // Engine de processamento separado de itens da lista negra.
     function blacklistFile(sku, csvFile, reason) {
 
         if (!blacklistCounter[sku]) {
@@ -99,20 +132,19 @@
         blacklistCounter[sku].files.push(csvFile.name);
         totalBlacklistedFiles++;
 
-        var pastaPedido = csvFile.parent; // pasta inteira do pedido
-        var destinoBase = ignoredFolder;  // _IGNORADOS
+        var pastaPedido = csvFile.parent;
+        var destinoBase = ignoredFolder;
         var targetPath = Folder(destinoBase + "/" + pastaPedido.name);
 
-        // mover a pasta inteira apenas uma vez
+
         if (!targetPath.exists) {
             try {
-                // FECHA QUALQUER HANDLE ABERTO DO CSV
                 try { csvFile.close(); } catch (_) { }
 
                 var origem = pastaPedido.parent.fsName;
                 var destino = ignoredFolder.fsName;
 
-                // AppleScript para mover a pasta no Finder
+                // Enxerto de AppleScript para mover a pasta no Finder
                 var as =
                     'tell application "Finder"\n' +
                     '    if exists POSIX file "' + origem + '" then\n' +
@@ -175,6 +207,7 @@
     // PARSER DE CSV
     // ======================================================
 
+    // Importante: essa função assume que o CSV possui o SKU na segunda coluna SEMPRE.
     function parseCSVLine(line) {
         var r = [], c = "", q = false;
         for (var i = 0; i < line.length; i++) {
@@ -247,6 +280,9 @@
     // MÓDULO - LIMPEZA DO DOCUMENTO
     // ======================================================
 
+
+    // Módulo de limpeza do documento mesclado, mudanças podem ser feitas aqui à medida que
+    // A demanda se apresentar.
     function fileCleanup(doc) {
 
         app.findGrepPreferences = NothingEnum.nothing;
@@ -278,9 +314,11 @@
     // RENOMEAÇÃO DE ARQUIVO
     // ======================================================
 
+    // O RegEx abaixo busca por números de série de OP. Ajustar aqui caso as exportações
+    // saiam com o nome de fallback (Nome do diagramador) Usar o site regex101.com para validação.
     function serialNumberGen(doc, fallback) {
 
-        var regex = /^\d{2,}\s*-\s*\d{2,}_\d{5,}-[A-Z0-9]+$/;
+        var regex = /^\d{2,}\s*-\s*\d{2,}_\d{5,}-[A-Z0-9]+$/; // <----------Alterar aqui
 
         for (var s = 0; s < doc.stories.length; s++) {
             var csvCell = doc.stories[s].contents.split(/[\r\n]+/);
@@ -336,7 +374,6 @@
                 "SKU marcado para processamento manual"
             );
 
-            // não tenta template, não tenta mesclar
             continue;
         }
 
