@@ -34,6 +34,7 @@
     // LOG DE PROCESSO
     // ======================================================
 
+    // Relatório de
     var logFile = File(entryFolder + "/relatório.txt");
 
     function log(msg) {
@@ -132,10 +133,6 @@
             log("AVISO: Pasta já existe em _IGNORADOS: " + pastaPedido.name);
         }
     }
-
-
-
-
 
     // ======================================================
     // BUSCA RECURSIVA DE CSVs
@@ -314,7 +311,7 @@
 
         pastasProcessadas[pastaPedido] = true;
 
-        log("\n--- Processando CSV: " + csv.fsName);
+        log("\n--- Processando CSV");
 
         var sku = targetSKU(csv);
         if (!sku) {
@@ -351,7 +348,7 @@
             }
             missingTemplateCounter[sku].push(csv.name);
 
-            log("TEMPLATE FALTANDO: " + sku + " (CSV: " + csv.name + ")");
+            log("TEMPLATE FALTANDO: " + sku, "→ " + template.fsName);
             continue;
         }
 
@@ -461,10 +458,8 @@
     for (var k in missingTemplateCounter) { missingTemplates = true; break; }
 
     if (missingTemplates) {
-        msg += "\n\nTemplates faltando (SKU):";
         for (var k in missingTemplateCounter) {
             msg += "\n- " + k;
-            log("RESUMO - TEMPLATE FALTANDO: " + k);
         }
     }
 
