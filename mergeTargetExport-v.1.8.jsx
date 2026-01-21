@@ -1,5 +1,6 @@
 // mergeTargetExport.jsx
-// Script para InDesign que realiza a substituição de um marcador "diagramado_por_NOME" pelo nome do usuário, procura um padrão específico de nome no texto para nomear o arquivo salvo, e exporta o documento como .indd e .pdf usando uma predefinição específica.
+// Script para InDesign que realiza a substituição de um marcador "diagramado_por_NOME" pelo nome do usuário, 
+// procura um padrão específico de nome no texto para nomear o arquivo salvo, e exporta o documento como .indd e .pdf usando uma predefinição específica.
 // Versão 1.9
 // Dev: Alyssa Ferreiro / @Sagittae-UX
 
@@ -116,6 +117,7 @@
         doc.exportFile(ExportFormat.pdfType, caminhoPDF, false, preset);
 
         try {
+            // Fecha janela do Finder
             var as =
                 'tell application "Finder"\n' +
                 '    if (count of windows) > 0 then\n' +
@@ -124,6 +126,15 @@
                 'end tell';
 
             app.doScript(as, ScriptLanguage.applescriptLanguage);
+
+            // Traz o InDesign para frente e garante foco
+            var asFocus =
+                'tell application "Adobe InDesign"\n' +
+                '    activate\n' +
+                'end tell';
+
+            app.doScript(asFocus, ScriptLanguage.applescriptLanguage);
+
         } catch (e) { }
 
     } catch (e) {
