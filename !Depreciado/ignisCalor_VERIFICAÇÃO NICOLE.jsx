@@ -25,20 +25,15 @@
 //    - rootFolder: Caminho da pasta de templates contendo os arquivos .indt.
 //    - userID: Nome do diagramador para registro no documento exportado.
 
-// 2. Adicione o script à pasta de scripts do Adobe InDesign através da janela de utilitários de scripts.
-//    Recomenda-se criar uma subpasta específica para scripts personalizados, e um atalho para fácil execução.
-
-// 3. Adicione SKUs à lista negra quando necessário. Os arquivos serão catalogados
+// 2. Adicione SKUs à lista negra quando necessário. Os arquivos serão catalogados
 //    e movidos para a pasta "_IGNORADOS", onde deverão ser processados manualmente.
 
-// 4. Abrir o Adobe InDesign, na janela de utilitários de scripts, executar o script.
+// 3. Execute o script no Adobe InDesign.
 
-// 5. Ao final do processamento, um relatório será gerado na pasta de entrada,
+// 4. Ao final do processamento, um relatório será gerado na pasta de entrada,
 //    detalhando o número de arquivos processados, erros encontrados e SKUs ignorados.
-//    Após o processamento, checar a pasta "_IGNORADOS" para itens que necessitam de diagramação manual
-//    e envie os pedidos para o dia relevante.
 
-// 6. Caso faltem templates para determinados SKUs, esses serão listados no relatório final.
+// 5. Caso faltem templates para determinados SKUs, esses serão listados no relatório final.
 //    Ajustar e incluir bases conforme necessário, adicionando o SKU entre aspas e respeitando a sintaxe abaixo:
 
 // ignoredSKUs {
@@ -107,7 +102,7 @@
 
 
     var missingTemplateCounter = {}; // Indicados no fim do log com o código de SKU
-    var outputFolder = {}; // Número de pedidos processados com sucesso
+    var pastasProcessadas = {}; // Número de pedidos processados com sucesso
     var blacklistCounter = {}; // Contador de SKUs listados para processamento manual
 
     // ======================================================
@@ -123,8 +118,7 @@
     // VALIDAÇÕES INICIAIS
     // ======================================================
 
-    // Check para pastas de entrada e templates. Tomar cuidado ao alterar os caminhos
-    // pois o script será abortado caso estejam incorretos.
+    // Check para pastas de entrada e templates. 
     if (!entryFolder.exists || !rootFolder.exists) {
         alert("Erro: O caminho da pasta de produção ou templates não foi encontrado.\nVerifique as configurações no início do script e cole o caminho de arquivo na linha 'var entryFolder' e 'var rootFolder'.");
         log("Erro: Caminho de pasta inválido.");
@@ -150,16 +144,16 @@
         blacklistCounter[sku].files.push(csvFile.name);
         totalBlacklistedFiles++;
 
-        var entryFolder = csvFile.parent;
+        var pastaPedido = csvFile.parent;
         var destinoBase = ignoredFolder;
-        var targetPath = Folder(destinoBase + "/" + entryFolder.name);
+        var targetPath = Folder(destinoBase + "/" + pastaPedido.name);
 
 
         if (!targetPath.exists) {
             try {
                 try { csvFile.close(); } catch (_) { }
 
-                var origem = entryFolder.parent.fsName;
+                var origem = pastaPedido.parent.fsName;
                 var destino = ignoredFolder.fsName;
 
                 // Enxerto de AppleScript para mover a pasta no Finder
@@ -172,15 +166,15 @@
 
                 app.doScript(as, ScriptLanguage.applescriptLanguage);
 
-                log("PASTA MOVIDA PARA _IGNORADOS (AppleScript): " + entryFolder.name);
+                log("PASTA MOVIDA PARA _IGNORADOS (AppleScript): " + pastaPedido.name);
 
             } catch (e) {
-                log("ERRO AO MOVER PASTA PARA _IGNORADOS (AS): " + entryFolder.fsName);
+                log("ERRO AO MOVER PASTA PARA _IGNORADOS (AS): " + pastaPedido.fsName);
                 log("DETALHE: " + e.message);
             }
 
         } else {
-            log("AVISO: Pasta já existe em _IGNORADOS: " + entryFolder.name);
+            log("AVISO: Pasta já existe em _IGNORADOS: " + pastaPedido.name);
         }
     }
 
@@ -357,14 +351,14 @@
     for (var i = 0; i < csvFiles.length; i++) {
 
         var csv = csvFiles[i];
-        var entryFolder = csv.parent.fsName;
+        var pastaPedido = csv.parent.fsName;
 
-        if (outputFolder[entryFolder]) {
+        if (pastasProcessadas[pastaPedido]) {
             log("IGNORADO (CSV duplicado na pasta): " + csv.fsName);
             continue;
         }
 
-        outputFolder[entryFolder] = true;
+        pastasProcessadas[pastaPedido] = true;
 
         log("\n--- Processando CSV");
 
