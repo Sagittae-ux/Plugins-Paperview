@@ -128,7 +128,7 @@
     // Check para pastas de entrada e templates. Tomar cuidado ao alterar os caminhos
     // pois o script será abortado caso estejam incorretos.
     if (!entryFolder.exists || !rootFolder.exists) {
-        alert("Erro: O caminho da pasta de produção ou templates não foi encontrado.\nVerifique as configurações no início do script e cole o caminho de arquivo na linha 'var entryFolder' e 'var rootFolder'.");
+        alert("Erro: O caminho da pasta de produção ou templates não foi encontrado.\nVerifique as configurações no início do script e cole o caminho de arquivo na line 'var entryFolder' e 'var rootFolder'.");
         log("Erro: Caminho de pasta inválido.");
         return;
     }
@@ -153,22 +153,22 @@
         totalBlacklistedFiles++;
 
         var entryFolder = csvFile.parent;
-        var destinoBase = ignoredFolder;
-        var targetPath = Folder(destinoBase + "/" + entryFolder.name);
+        var productionFolder = ignoredFolder;
+        var targetPath = Folder(productionFolder + "/" + entryFolder.name);
 
 
         if (!targetPath.exists) {
             try {
                 try { csvFile.close(); } catch (_) { }
 
-                var origem = entryFolder.parent.fsName;
-                var destino = ignoredFolder.fsName;
+                var origin = entryFolder.parent.fsName;
+                var outputFolder = ignoredFolder.fsName;
 
                 // Enxerto de AppleScript para mover a pasta no Finder
                 var as =
                     'tell application "Finder"\n' +
-                    '    if exists POSIX file "' + origem + '" then\n' +
-                    '        move POSIX file "' + origem + '" to POSIX file "' + destino + '"\n' +
+                    '    if exists POSIX file "' + origin + '" then\n' +
+                    '        move POSIX file "' + origin + '" to POSIX file "' + outputFolder + '"\n' +
                     '    end if\n' +
                     'end tell';
 
@@ -190,34 +190,34 @@
     // BUSCA RECURSIVA DE CSVs
     // ======================================================
 
-    function csvCollect(pastaRaiz) {
+    function csvCollect(rootDirectory) {
 
-        var resultados = [];
+        var results = [];
 
         function parse(pasta) {
 
-            var itens = pasta.getFiles();
-            var encontrouCSV = false;
+            var items = pasta.getFiles();
+            var csvCheck = false;
 
-            for (var i = 0; i < itens.length; i++) {
-                if (itens[i] instanceof File && csvTarget.test(itens[i].name)) {
-                    resultados.push(itens[i]);
-                    encontrouCSV = true;
+            for (var i = 0; i < items.length; i++) {
+                if (items[i] instanceof File && csvTarget.test(items[i].name)) {
+                    results``.push(items[i]);
+                    csvCheck = true;
                     break;
                 }
             }
 
-            if (!encontrouCSV) {
-                for (var j = 0; j < itens.length; j++) {
-                    if (itens[j] instanceof Folder) {
-                        parse(itens[j]);
+            if (!csvCheck) {
+                for (var j = 0; j < items.length; j++) {
+                    if (items[j] instanceof Folder) {
+                        parse(items[j]);
                     }
                 }
             }
         }
 
-        parse(pastaRaiz);
-        return resultados;
+        parse(rootDirectory);
+        return results;
     }
 
     var csvFiles = csvCollect(entryFolder);
@@ -342,9 +342,9 @@
         for (var s = 0; s < doc.stories.length; s++) {
             var csvCell = doc.stories[s].contents.split(/[\r\n]+/);
             for (var l = 0; l < csvCell.length; l++) {
-                var linha = csvCell[l].replace(/^\s+|\s+$/g, "");
-                if (regex.test(linha)) {
-                    return linha.replace(/[\\\/:*?"<>|]/g, "_");
+                var line = csvCell[l].replace(/^\s+|\s+$/g, "");
+                if (regex.test(line)) {
+                    return line.replace(/[\\\/:*?"<>|]/g, "_");
                 }
             }
         }
