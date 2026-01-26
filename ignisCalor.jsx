@@ -11,7 +11,7 @@
 // RECURSOS PRINCIPAIS:
 // - Busca recursiva de arquivos CSV em subpastas.
 // - Identificação automática de SKU a partir do conteúdo do CSV através de parsing da segunda coluna.
-// - Associação dinâmica de templates baseados no SKU detectado na pasta de templates.
+// - Associação dinâmica de templates baseados no SKU detectado na pasta raiz com as bases revisadas.
 // - Mesclagem de dados utilizando o recurso Data Merge do InDesign.
 // - Limpeza automática do documento mesclado (remoção de marcadores, quadros vazios, etc.).
 // - Exportação em lote para formatos INDD e PDF com presets definidos.
@@ -25,20 +25,22 @@
 //    - rootFolder: Caminho da pasta de templates contendo os arquivos .indt.
 //    - userID: Nome do diagramador para registro no documento exportado.
 
-// 2. Adicione o script à pasta de scripts do Adobe InDesign através da janela de utilitários de scripts.
-//    Recomenda-se criar uma subpasta específica para scripts personalizados, e um atalho para fácil execução.
-
-// 3. Adicione SKUs à lista negra quando necessário. Os arquivos serão catalogados
+// 2. Adicione SKUs à lista negra quando necessário. Os arquivos serão catalogados
 //    e movidos para a pasta "_IGNORADOS", onde deverão ser processados manualmente.
+
+// 3. Adicione o script à pasta de scripts do Adobe InDesign através da janela de utilitários de scripts.
+//    Recomenda-se criar uma subpasta específica para scripts personalizados, e um atalho para fácil execução.
 
 // 4. Abrir o Adobe InDesign, na janela de utilitários de scripts, executar o script.
 
 // 5. Ao final do processamento, um relatório será gerado na pasta de entrada,
 //    detalhando o número de arquivos processados, erros encontrados e SKUs ignorados.
 //    Após o processamento, checar a pasta "_IGNORADOS" para itens que necessitam de diagramação manual
-//    e envie os pedidos para o dia relevante.
+//    e envie os itens para o fechamento.
 
-// 6. Caso faltem templates para determinados SKUs, esses serão listados no relatório final.
+// 6. Faça o preflight dos arquivos, atentando-se a erros estéticos.
+
+// 7. Caso faltem templates para determinados SKUs, esses serão listados no relatório final.
 //    Ajustar e incluir bases conforme necessário, adicionando o SKU entre aspas e respeitando a sintaxe abaixo:
 
 // ignoredSKUs {
