@@ -74,7 +74,8 @@
     // Lista reservada para itens problemáticos ou que exigem diagramação especial.
 
     var ignoredSKUs = { //Adicionar itens para a lista negra aqui
-        "MD890": true
+        "MD890": true,
+        "MD664": true
     };
 
     // ======================================================
@@ -201,7 +202,7 @@
 
             for (var i = 0; i < items.length; i++) {
                 if (items[i] instanceof File && csvTarget.test(items[i].name)) {
-                    results``.push(items[i]);
+                    results.push(items[i]);
                     csvCheck = true;
                     break;
                 }
@@ -495,12 +496,6 @@
 
         log("SKU: " + s);
         log(" Ocorrências: " + blacklistCounter[s].count);
-
-        for (var j = 0; j < blacklistCounter[s].files.length; j++) {
-            log("   - " + blacklistCounter[s].files[j]);
-        }
-
-        log("");
     }
 
     var msg =
