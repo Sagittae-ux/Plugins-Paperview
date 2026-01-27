@@ -297,6 +297,7 @@
         }
     }
 
+
     // ======================================================
     // MÓDULO - LIMPEZA DO DOCUMENTO
     // ======================================================
@@ -305,12 +306,51 @@
     // Módulo de limpeza do documento mesclado, mudanças podem ser feitas aqui
     function fileCleanup(doc) {
 
-        app.findGrepPreferences = NothingEnum.nothing;
-        app.changeGrepPreferences = NothingEnum.nothing;
+        for (var s = 0; s < doc.stories.length; s++) {
 
-        app.findGrepPreferences.findWhat = "\\\\#";
-        app.changeGrepPreferences.changeTo = "";
-        doc.changeGrep();
+            var story = doc.stories[s];
+
+            var containers = story.textContainers;
+            var skipStory = false;
+
+            for (var c = 0; c < containers.length; c++) {
+                try {
+                    if (
+                        containers[c].locked === true ||
+                        (containers[c].itemLayer && containers[c].itemLayer.locked === true)
+                    ) {
+                        skipStory = true;
+                        break;
+                    }
+                } catch (_) { }
+            }
+
+            if (skipStory) {
+                continue;
+            }
+
+            try {
+                var contents = story.contents;
+                var idx;
+
+                while ((idx = contents.indexOf("\\#")) !== -1) {
+
+                    // Remove o \#
+                    story.characters[idx].remove();
+                    story.characters[idx].remove();
+
+                    // Força um backspace lógico: remove 1 caractere antes, se existir
+                    if (idx - 1 >= 0) {
+                        try {
+                            story.characters[idx - 1].remove();
+                        } catch (_) { }
+                    }
+
+                    contents = story.contents; // atualiza buffer
+                }
+
+            } catch (_) { }
+        }
 
         app.findGrepPreferences.findWhat = "\\\\n";
         app.changeGrepPreferences.changeTo = "\\n";
@@ -319,15 +359,49 @@
         app.findGrepPreferences = NothingEnum.nothing;
         app.changeGrepPreferences = NothingEnum.nothing;
 
-        var items = doc.allPageItems;
-        for (var i = items.length - 1; i >= 0; i--) {
+        // Reset prefs
+        app.findGrepPreferences = NothingEnum.nothing;
+        app.changeGrepPreferences = NothingEnum.nothing;
+
+        // Limpeza de frames vazios, contextual para texto e imagens
+        var allFrames = doc.allPageItems;
+        for (var k = allFrames.length - 1; k >= 0; k--) {
+            var item = allFrames[k];
+
             try {
-                if (items[i] instanceof TextFrame &&
-                    items[i].contents.replace(/\s+/g, "") === "") {
-                    items[i].remove();
+                // Remover frames de texto vazios
+                if (item instanceof TextFrame && !item.locked) {
+                    if (item.contents.replace(/\s+/g, "") === "") {
+                        item.remove();
+                        continue;
+                    }
+
+                    // Overset
+                    if (item.overflows) {
+                        var tries = 0;
+                        while (item.overflows && tries < 20) {
+                            item.geometricBounds = [
+                                item.geometricBounds[0],
+                                item.geometricBounds[1],
+                                item.geometricBounds[2] + 100, // aumenta altura
+                                item.geometricBounds[3]
+                            ];
+                            tries++;
+                        }
+                    }
                 }
-            } catch (_) { }
+
+                // Remover frames sem imagem
+                if (item instanceof Rectangle && !item.locked) {
+                    if (item.graphics.length === 0 && item.allGraphics.length === 0) {
+                        item.remove();
+                    }
+                }
+            } catch (e) {
+                // ignora bloqueados ou erros
+            }
         }
+
     }
 
     // ======================================================
