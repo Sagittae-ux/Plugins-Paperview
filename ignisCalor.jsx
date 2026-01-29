@@ -346,7 +346,7 @@
                         } catch (_) { }
                     }
 
-                    contents = story.contents; // atualiza buffer
+                    contents = story.contents;
                 }
 
             } catch (_) { }
@@ -356,10 +356,6 @@
         app.changeGrepPreferences.changeTo = "\\n";
         doc.changeGrep();
 
-        app.findGrepPreferences = NothingEnum.nothing;
-        app.changeGrepPreferences = NothingEnum.nothing;
-
-        // Reset prefs
         app.findGrepPreferences = NothingEnum.nothing;
         app.changeGrepPreferences = NothingEnum.nothing;
 
@@ -398,10 +394,8 @@
                     }
                 }
             } catch (e) {
-                // ignora bloqueados ou erros
             }
         }
-
     }
 
     // ======================================================
