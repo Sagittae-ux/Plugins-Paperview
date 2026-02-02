@@ -82,7 +82,7 @@
     // LOG DE PROCESSO
     // ======================================================
 
-    var logFile = File(entryFolder + "/relatório.txt"); // Arquivo de log na pasta de entrada
+    var logFile = File(entryFolder + "/_relatório.txt"); // Arquivo de log na pasta de entrada
 
     function log(msg) {
         try {
@@ -107,7 +107,6 @@
     var errorCount = 0;
     var totalBlacklistedFiles = 0;
     var totalBlacklistedSKUs = 0;
-
 
     var missingTemplateCounter = {}; // Indicados no fim do log com o código de SKU
     var outputFolder = {}; // Número de pedidos processados com sucesso
@@ -296,7 +295,6 @@
             }
         }
     }
-
 
     // ======================================================
     // MÓDULO - LIMPEZA DO DOCUMENTO
