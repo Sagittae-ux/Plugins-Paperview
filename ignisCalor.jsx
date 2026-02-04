@@ -1,6 +1,6 @@
 // ignisCalor.jsx
 // Batch CSV → SKU → Template → Data Merge → Limpeza → Exportação
-// Versão 3.0
+// Versão 3.2
 // Dev: Alyssa Ferreiro @Sagittae-UX
 
 // Esse script automatiza o processo de diagramação em lote no Adobe InDesign,
@@ -26,7 +26,7 @@
 //    - userID: Nome do diagramador para registro no documento exportado.
 
 // 2. Adicione SKUs à lista negra quando necessário. Os arquivos serão catalogados
-//    e movidos para a pasta "_IGNORADOS", onde deverão ser processados manualmente.
+//    e movidos para a pasta "_MANUAL", onde deverão ser processados manualmente.
 
 // 3. Adicione o script à pasta de scripts do Adobe InDesign através da janela de utilitários de scripts.
 //    Recomenda-se criar uma subpasta específica para scripts personalizados, e um atalho para fácil execução.
@@ -35,7 +35,7 @@
 
 // 5. Ao final do processamento, um relatório será gerado na pasta de entrada,
 //    detalhando o número de arquivos processados, erros encontrados e SKUs ignorados.
-//    Após o processamento, checar a pasta "_IGNORADOS" para itens que necessitam de diagramação manual
+//    Após o processamento, checar a pasta "_MANUAL" para itens que necessitam de diagramação manual
 //    e envie os itens para o fechamento.
 
 // 6. Faça o preflight dos arquivos, atentando-se a erros estéticos.
@@ -70,8 +70,8 @@
     // LISTA NEGRA - SKUs PARA PROCESSAMENTO MANUAL AQUI
     // ======================================================
 
-    // Referir-se ao passo 5 das instruções acima para sintaxe correta.
-    // Lista reservada para itens problemáticos ou que exigem diagramação especial.
+    // Referir-se ao passo 7 das instruções acima para sintaxe correta.
+    // Lista reservada para chancelas.
 
     var ignoredSKUs = { //Adicionar itens para a lista negra aqui
         "MD890": true,
@@ -82,7 +82,7 @@
     // LOG DE PROCESSO
     // ======================================================
 
-    var logFile = File(entryFolder + "/_relatório.txt"); // Arquivo de log na pasta de entrada
+    var logFile = File(entryFolder.fsName + "/relatório.txt");
 
     function log(msg) {
         try {
@@ -106,7 +106,7 @@
     var processedFiles = 0;
     var errorCount = 0;
     var totalBlacklistedFiles = 0;
-    var totalBlacklistedSKUs = 0;
+
 
     var missingTemplateCounter = {}; // Indicados no fim do log com o código de SKU
     var outputFolder = {}; // Número de pedidos processados com sucesso
@@ -116,7 +116,7 @@
     // PASTA DE IGNORADOS
     // ======================================================   
 
-    var ignoredFolder = Folder(entryFolder + "/_IGNORADOS");
+    var ignoredFolder = Folder(entryFolder + "/_MANUAL");
     if (!ignoredFolder.exists) {
         ignoredFolder.create();
     }
@@ -135,55 +135,6 @@
 
     function isIgnoredSKU(sku) {
         return ignoredSKUs[sku] === true;
-    }
-
-    // Engine de processamento separado de itens da lista negra.
-    function blacklistFile(sku, csvFile, reason) {
-
-        if (!blacklistCounter[sku]) {
-            blacklistCounter[sku] = {
-                count: 0,
-                files: []
-            };
-            totalBlacklistedSKUs++;
-        }
-
-        blacklistCounter[sku].count++;
-        blacklistCounter[sku].files.push(csvFile.name);
-        totalBlacklistedFiles++;
-
-        var entryFolder = csvFile.parent;
-        var productionFolder = ignoredFolder;
-        var targetPath = Folder(productionFolder + "/" + entryFolder.name);
-
-
-        if (!targetPath.exists) {
-            try {
-                try { csvFile.close(); } catch (_) { }
-
-                var origin = entryFolder.parent.fsName;
-                var outputFolder = ignoredFolder.fsName;
-
-                // Enxerto de AppleScript para mover a pasta no Finder
-                var as =
-                    'tell application "Finder"\n' +
-                    '    if exists POSIX file "' + origin + '" then\n' +
-                    '        move POSIX file "' + origin + '" to POSIX file "' + outputFolder + '"\n' +
-                    '    end if\n' +
-                    'end tell';
-
-                app.doScript(as, ScriptLanguage.applescriptLanguage);
-
-                log("PASTA MOVIDA PARA _IGNORADOS (AppleScript): " + entryFolder.name);
-
-            } catch (e) {
-                log("ERRO AO MOVER PASTA PARA _IGNORADOS (AS): " + entryFolder.fsName);
-                log("DETALHE: " + e.message);
-            }
-
-        } else {
-            log("AVISO: Pasta já existe em _IGNORADOS: " + entryFolder.name);
-        }
     }
 
     // ======================================================
@@ -296,6 +247,7 @@
         }
     }
 
+
     // ======================================================
     // MÓDULO - LIMPEZA DO DOCUMENTO
     // ======================================================
@@ -369,20 +321,6 @@
                         item.remove();
                         continue;
                     }
-
-                    // Overset
-                    if (item.overflows) {
-                        var tries = 0;
-                        while (item.overflows && tries < 20) {
-                            item.geometricBounds = [
-                                item.geometricBounds[0],
-                                item.geometricBounds[1],
-                                item.geometricBounds[2] + 100, // aumenta altura
-                                item.geometricBounds[3]
-                            ];
-                            tries++;
-                        }
-                    }
                 }
 
                 // Remover frames sem imagem
@@ -426,16 +364,16 @@
     for (var i = 0; i < csvFiles.length; i++) {
 
         var csv = csvFiles[i];
-        var entryFolder = csv.parent.fsName;
+        var orderPath = csv.parent.fsName;
 
-        if (outputFolder[entryFolder]) {
+        if (outputFolder[orderPath]) {
             log("IGNORADO (CSV duplicado na pasta): " + csv.fsName);
             continue;
         }
-
-        outputFolder[entryFolder] = true;
+        outputFolder[orderPath] = true;
 
         log("\n--- Processando CSV");
+
 
         var sku = targetSKU(csv);
         if (!sku) {
@@ -446,23 +384,6 @@
 
         log("SKU identificado: " + sku);
 
-        // ==========================================
-        // LISTA NEGRA DE SKUs (PROCESSO MANUAL)
-        // ==========================================
-
-        if (isIgnoredSKU(sku)) {
-
-            log("SKU EM LISTA MANUAL — IGNORADO: " + sku);
-
-            blacklistFile(
-                sku,
-                csv,
-                "SKU marcado para processamento manual"
-            );
-
-            continue;
-        }
-
         var template = File(rootFolder + "/" + sku + ".indt");
         if (!template.exists) {
 
@@ -471,7 +392,7 @@
             }
             missingTemplateCounter[sku].push(csv.name);
 
-            log("TEMPLATE FALTANDO: " + sku, "→ " + template.fsName);
+            log("TEMPLATE FALTANDO: " + sku + " → " + template.fsName);
             continue;
         }
 
@@ -487,10 +408,75 @@
         }
 
         var mergedDocument = mergeFile(docBase);
+
         if (!mergedDocument) {
             errorCount++;
             log("ERRO: Falha na mesclagem: " + csv.name);
             docBase.close(SaveOptions.NO);
+            continue;
+        }
+
+        if (!blacklistCounter[sku]) {
+            blacklistCounter[sku] = { count: 0 };
+        }
+        blacklistCounter[sku].count++;
+
+        if (isIgnoredSKU(sku)) {
+
+            totalBlacklistedFiles++;
+            blacklistCounter[sku].count++;
+
+            log("SKU em blacklist → fluxo manual com INDD salvo.");
+
+            userIdentifier(mergedDocument, userID);
+            fileCleanup(mergedDocument);
+
+            var exportName = serialNumberGen(mergedDocument, sku);
+
+            // PASTA UM NÍVEL ACIMA DO CSV
+            var pasta = csv.parent.parent;
+
+            // SALVA APENAS O INDD
+            try {
+                var inddFile = File(csv.parent + "/" + exportName + ".indd");
+                mergedDocument.save(inddFile);
+                log("INDD SALVO (manual): " + inddFile.fsName);
+            } catch (e) {
+                log("ERRO ao salvar INDD manual: " + e.message);
+            }
+
+            // ===== ORDEM CORRETA DO DATAMERGE =====
+            try {
+                docBase.dataMergeProperties.removeDataSource();
+            } catch (_) { }
+
+            try {
+                docBase.close(SaveOptions.NO);
+            } catch (_) { }
+
+            try {
+                mergedDocument.close(SaveOptions.NO);
+            } catch (_) { }
+
+            $.sleep(800);
+
+            // ===== MOVE A PASTA DO PEDIDO (UM NÍVEL ACIMA) =====
+            try {
+                pasta.move(ignoredFolder);
+                log("PASTA DO PEDIDO MOVIDA PARA _MANUAL: " + pasta.name);
+            } catch (_) {
+                try {
+                    var as =
+                        'tell application "Finder"\n' +
+                        'move (POSIX file "' + pasta.fsName + '") to (POSIX file "' + ignoredFolder.fsName + '")\n' +
+                        'end tell';
+                    app.doScript(as, ScriptLanguage.applescriptLanguage);
+                    log("AppleScript move aplicado.");
+                } catch (e) {
+                    log("ERRO AppleScript: " + e.message);
+                }
+            }
+
             continue;
         }
 
@@ -504,6 +490,7 @@
         }
 
         userIdentifier(mergedDocument, userID);
+
         fileCleanup(mergedDocument);
 
         var exportName = serialNumberGen(mergedDocument, sku);
@@ -511,6 +498,7 @@
 
         try {
             var inddFile = File(pasta + "/" + exportName + ".indd");
+
             var pdfFile = File(pasta + "/" + exportName + ".pdf");
 
             mergedDocument.save(inddFile);
@@ -523,10 +511,6 @@
 
             processedFiles++;
 
-            log("EXPORTADO:");
-            log("  INDD → " + inddFile.fsName);
-            log("  PDF  → " + pdfFile.fsName);
-
             try {
                 var as =
                     'tell application "Finder"\n' +
@@ -538,6 +522,21 @@
                 app.doScript(as, ScriptLanguage.applescriptLanguage);
             } catch (e) { }
 
+            log("EXPORTADO:");
+
+            log("  INDD → " + inddFile.fsName);
+            log("  PDF  → " + pdfFile.fsName);
+
+            try {
+                var as =
+                    'tell application "Finder"\n' +
+                    '    if (count of windows) > 0 then\n' +
+                    '        close front window\n' +
+                    '    end if\n' +
+                    'end tell';
+
+            } catch (e) { }
+
         } catch (e) {
             alert("Erro ao salvar/exportar o documento: " + e.message);
         }
@@ -545,13 +544,19 @@
         // FECHAR DOCUMENTO MESCLADO
         try {
             mergedDocument.close(SaveOptions.NO);
-            log("Documento mesclado fechado.");
-        } catch (_) {
-            log("AVISO: Falha ao fechar documento mesclado.");
-        }
+        } catch (_) { }
+
+        // LIBERA O CSV DO DATAMERGE
+        try {
+            docBase.dataMergeProperties.removeDataSource();
+        } catch (_) { }
+
+        csv = null;
+        $.sleep(300);
 
         // FECHAR TEMPLATE BASE
         docBase.close(SaveOptions.NO);
+
     }
 
     // ======================================================
@@ -568,8 +573,8 @@
         "Batch finalizado.\n\n" +
         "Processados: " + processedFiles + "\n" +
         "Erros: " + errorCount + "\n" +
-        "Ignorados (movidos): " + totalBlacklistedFiles;
-
+        "Ignorados (movidos): " + totalBlacklistedFiles + "\n" +
+        "Templates faltando:";
 
     var missingTemplates = false;
     for (var k in missingTemplateCounter) { missingTemplates = true; break; }
@@ -593,7 +598,6 @@
     } else {
         log("Sem templates faltando.");
     }
-
     log("========================================\n");
 
     alert(msg);
