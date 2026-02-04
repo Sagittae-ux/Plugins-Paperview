@@ -1,21 +1,23 @@
 // ignisCalor.jsx
-// Batch CSV → SKU → Template → Data Merge → Limpeza → Exportação
-// Versão 3.2
+// Batch CSV → SKU → Template → Data Merge → Limpeza → Exportação   
+// Versão 4.0
 // Dev: Alyssa Ferreiro @Sagittae-UX
 
 // Esse script automatiza o processo de diagramação em lote no Adobe InDesign,
 // atuando como o novo motor central para a tarefa de mesclagem preliminar de
-// processamento de pedidos.
+// processamento de pedidos de forma compreensiva para facilitar o preflight.
 
 
 // RECURSOS PRINCIPAIS:
 // - Busca recursiva de arquivos CSV em subpastas.
-// - Identificação automática de SKU a partir do conteúdo do CSV através de parsing da segunda coluna.
-// - Associação dinâmica de templates baseados no SKU detectado na pasta raiz com as bases revisadas.
+// - Identificação automática de SKU a partir de parsing do conteúdo do CSV.
+// - Associação dinâmica de templates baseados no SKU detectado na pasta raiz.
 // - Mesclagem de dados utilizando o recurso Data Merge do InDesign.
 // - Limpeza automática do documento mesclado (remoção de marcadores, quadros vazios, etc.).
 // - Exportação em lote para formatos INDD e PDF com presets definidos.
-// - Registro detalhado de processos, erros e SKUs ignorados em um arquivo de log.
+// - Processamento dinâmico de acordo com condicionais presentes no pedido.
+// - Separação de pedidos sem template e marcados como manuais para as pastas relevantes. 
+// - Registro detalhado de processos, erros, pedidos manuais e templates faltando em um arquivo de log.
 
 
 // INSTRUÇÕES DE USO:
@@ -25,23 +27,25 @@
 //    - rootFolder: Caminho da pasta de templates contendo os arquivos .indt.
 //    - userID: Nome do diagramador para registro no documento exportado.
 
-// 2. Adicione SKUs à lista negra quando necessário. Os arquivos serão catalogados
-//    e movidos para a pasta "_MANUAL", onde deverão ser processados manualmente.
+// 2. Adicione SKUs problemáticos ou determinados como impossíveis de automatizar quando necessário. 
+//    Os arquivos serão catalogados e movidos para a pasta "_MANUAL", onde deverão ser processados manualmente.
 
 // 3. Adicione o script à pasta de scripts do Adobe InDesign através da janela de utilitários de scripts.
 //    Recomenda-se criar uma subpasta específica para scripts personalizados, e um atalho para fácil execução.
 
-// 4. Abrir o Adobe InDesign, na janela de utilitários de scripts, executar o script.
+// 4. Abrir o Adobe InDesign, na janela de utilitários de scripts, executar o script. Recomenda-se
+//    a criação de um atalho para facilitar o uso (Editar > Atalhos do Teclado > Área do produto: Scripts).
 
 // 5. Ao final do processamento, um relatório será gerado na pasta de entrada,
-//    detalhando o número de arquivos processados, erros encontrados e SKUs ignorados.
-//    Após o processamento, checar a pasta "_MANUAL" para itens que necessitam de diagramação manual
-//    e envie os itens para o fechamento.
+//    detalhando o número de arquivos processados, erros encontrados e SKUs movidos.
 
 // 6. Faça o preflight dos arquivos, atentando-se a erros estéticos.
 
-// 7. Caso faltem templates para determinados SKUs, esses serão listados no relatório final.
-//    Ajustar e incluir bases conforme necessário, adicionando o SKU entre aspas e respeitando a sintaxe abaixo:
+// 7. Caso faltem templates para determinados SKUs, esses serão listados no relatório final. Ao fim do
+//    processamento, atentar-se a essa pasta e processar os arquivos restantes com o script após a
+//    criação das bases. O mesmo processo se aplica a SKU's marcados para processamento manual.
+
+// 8. Ajustar e incluir bases conforme necessário, adicionando o SKU entre aspas e respeitando a sintaxe abaixo:
 
 // ignoredSKUs {
 //     "MD890": true,
@@ -49,7 +53,6 @@
 // };
 
 // Em caso de dúvidas ou necessidade de suporte, entre em contato com Alyssa Ferreiro @Sagittae-UX >:3c
-
 
 (function () {
 
@@ -59,8 +62,8 @@
 
     var exportPreset = "Diagramacao2025"; //Preset exata padronizada para produção
 
-    var entryFolder = Folder("~/Documents/PRODUCAO"); //Colar o caminho de arquivo da pasta de entrada aqui
-    var rootFolder = Folder("~/Documents/TEMPLATES"); //Colar o caminho de arquivo da pasta de templates aqui
+    var entryFolder = Folder("~/Documents/PRODUCAO"); //Colar o caminho de arquivo da pasta de entrada aqui ou determinar caminho padrão
+    var rootFolder = Folder("~/Documents/TEMPLATES"); //Colar o caminho de arquivo da pasta de templates aqui ou determinar caminho padrão
 
     var userID = "Alyssa"; //Nome do diagramador para registro no documento exportado
 
@@ -70,10 +73,11 @@
     // LISTA NEGRA - SKUs PARA PROCESSAMENTO MANUAL AQUI
     // ======================================================
 
-    // Referir-se ao passo 7 das instruções acima para sintaxe correta.
-    // Lista reservada para chancelas.
+    // Referir-se ao passo 8 das instruções acima para sintaxe correta.
+    // Lista reservada para chancelas, itens complexos demais para diagramação automática 
+    // ou arquivos antigos não adequados para o script.
 
-    var ignoredSKUs = { //Adicionar itens para a lista negra aqui
+    var ignoredSKUs = {
         "MD890": true,
         "MD664": true
     };
@@ -82,7 +86,7 @@
     // LOG DE PROCESSO
     // ======================================================
 
-    var logFile = File(entryFolder.fsName + "/relatório.txt");
+    var logFile = File(entryFolder.fsName + "/!relatório.txt");
 
     function log(msg) {
         try {
@@ -107,18 +111,22 @@
     var errorCount = 0;
     var totalBlacklistedFiles = 0;
 
-
     var missingTemplateCounter = {}; // Indicados no fim do log com o código de SKU
     var outputFolder = {}; // Número de pedidos processados com sucesso
     var blacklistCounter = {}; // Contador de SKUs listados para processamento manual
 
     // ======================================================
-    // PASTA DE IGNORADOS
+    // CRIAÇÃO DA PASTA DE IGNORADOS / TEMPLATES AUSENTES
     // ======================================================   
 
     var ignoredFolder = Folder(entryFolder + "/_MANUAL");
     if (!ignoredFolder.exists) {
         ignoredFolder.create();
+    }
+
+    var missingBaseFolder = Folder(entryFolder + "/_SEM_BASE");
+    if (!missingBaseFolder.exists) {
+        missingBaseFolder.create();
     }
 
     // ======================================================
@@ -171,6 +179,7 @@
         return results;
     }
 
+    var orderState = {};
     var csvFiles = csvCollect(entryFolder);
     log("CSVs encontrados: " + csvFiles.length);
 
@@ -201,7 +210,7 @@
         var csvCell = txt.split(/\r\n|\n|\r/);
         if (csvCell.length < 2) return null;
 
-        var cols = parseCSVLine(csvCell[1]);
+        var cols = parseCSVLine(csvCell[1]); // IMPORTANTE: Caso a coluna do CSV mude, trocar aqui, atentando-se ao fato de que arrays começam do 0
         if (cols.length < 2) return null;
 
         return cols[1].replace(/^\s+|\s+$/g, "");
@@ -247,13 +256,10 @@
         }
     }
 
-
     // ======================================================
     // MÓDULO - LIMPEZA DO DOCUMENTO
     // ======================================================
 
-
-    // Módulo de limpeza do documento mesclado, mudanças podem ser feitas aqui
     function fileCleanup(doc) {
 
         for (var s = 0; s < doc.stories.length; s++) {
@@ -364,6 +370,35 @@
     for (var i = 0; i < csvFiles.length; i++) {
 
         var csv = csvFiles[i];
+
+        var orderFolder = csv.parent.parent;
+        var orderKey = orderFolder.fsName;
+
+        if (!orderState[orderKey]) {
+            orderState[orderKey] = {
+                folder: orderFolder,
+                hasBlacklist: false,
+                hasMissingTemplate: false,
+                hasExistingINDD: false
+            };
+        }
+
+
+        var csv = csvFiles[i];
+        // Evita reprocessar pedidos já diagramados
+        var existingINDDs = csv.parent.getFiles(function (f) {
+            return f instanceof File && /\.indd$/i.test(f.name);
+        });
+
+        var skipMerge = false;
+
+        if (existingINDDs.length > 0) {
+            log("INDD já existente na pasta: " + csv.parent.name);
+            orderState[orderKey].hasExistingINDD = true;
+            skipMerge = true; // apenas impede a diagramação
+        }
+
+
         var orderPath = csv.parent.fsName;
 
         if (outputFolder[orderPath]) {
@@ -374,7 +409,6 @@
 
         log("\n--- Processando CSV");
 
-
         var sku = targetSKU(csv);
         if (!sku) {
             errorCount++;
@@ -384,6 +418,20 @@
 
         log("SKU identificado: " + sku);
 
+        // ===== CLASSIFICAÇÃO ANTECIPADA (sempre ocorre) =====
+        if (isIgnoredSKU(sku)) {
+            orderState[orderKey].hasBlacklist = true;
+
+            if (!blacklistCounter[sku]) {
+                blacklistCounter[sku] = { count: 0 };
+            }
+            blacklistCounter[sku].count++;
+            totalBlacklistedFiles++;
+
+            log("SKU em blacklist identificado.");
+        }
+
+
         var template = File(rootFolder + "/" + sku + ".indt");
         if (!template.exists) {
 
@@ -392,7 +440,16 @@
             }
             missingTemplateCounter[sku].push(csv.name);
 
-            log("TEMPLATE FALTANDO: " + sku + " → " + template.fsName);
+            log("TEMPLATE FALTANDO: " + sku);
+            orderState[orderKey].hasMissingTemplate = true;
+
+            // não mescla, mas já classificou
+            continue;
+        }
+
+        // Já existe INDD → não mesclar novamente
+        if (skipMerge) {
+            log("Pedido já diagramado → pulando mescla.");
             continue;
         }
 
@@ -416,34 +473,25 @@
             continue;
         }
 
-        if (!blacklistCounter[sku]) {
-            blacklistCounter[sku] = { count: 0 };
-        }
-        blacklistCounter[sku].count++;
-
         if (isIgnoredSKU(sku)) {
-
-            totalBlacklistedFiles++;
-            blacklistCounter[sku].count++;
 
             log("SKU em blacklist → fluxo manual com INDD salvo.");
 
-            userIdentifier(mergedDocument, userID);
-            fileCleanup(mergedDocument);
-
+            // Nome primeiro
             var exportName = serialNumberGen(mergedDocument, sku);
 
-            // PASTA UM NÍVEL ACIMA DO CSV
-            var pasta = csv.parent.parent;
-
-            // SALVA APENAS O INDD
+            // SALVA IMEDIATAMENTE APÓS A MESCLA (sem limpeza)
             try {
                 var inddFile = File(csv.parent + "/" + exportName + ".indd");
                 mergedDocument.save(inddFile);
-                log("INDD SALVO (manual): " + inddFile.fsName);
+                log("INDD SALVO (manual, sem limpeza): " + inddFile.fsName);
             } catch (e) {
                 log("ERRO ao salvar INDD manual: " + e.message);
             }
+
+            // AGORA SIM aplica identificação e limpeza
+            userIdentifier(mergedDocument, userID);
+            fileCleanup(mergedDocument);
 
             // ===== ORDEM CORRETA DO DATAMERGE =====
             try {
@@ -460,22 +508,7 @@
 
             $.sleep(800);
 
-            // ===== MOVE A PASTA DO PEDIDO (UM NÍVEL ACIMA) =====
-            try {
-                pasta.move(ignoredFolder);
-                log("PASTA DO PEDIDO MOVIDA PARA _MANUAL: " + pasta.name);
-            } catch (_) {
-                try {
-                    var as =
-                        'tell application "Finder"\n' +
-                        'move (POSIX file "' + pasta.fsName + '") to (POSIX file "' + ignoredFolder.fsName + '")\n' +
-                        'end tell';
-                    app.doScript(as, ScriptLanguage.applescriptLanguage);
-                    log("AppleScript move aplicado.");
-                } catch (e) {
-                    log("ERRO AppleScript: " + e.message);
-                }
-            }
+            log("Pedido marcado para _MANUAL ao final.");
 
             continue;
         }
@@ -541,22 +574,71 @@
             alert("Erro ao salvar/exportar o documento: " + e.message);
         }
 
-        // FECHAR DOCUMENTO MESCLADO
-        try {
-            mergedDocument.close(SaveOptions.NO);
-        } catch (_) { }
-
-        // LIBERA O CSV DO DATAMERGE
         try {
             docBase.dataMergeProperties.removeDataSource();
         } catch (_) { }
 
+        try {
+            docBase.close(SaveOptions.NO);
+        } catch (_) { }
+
+        try {
+            mergedDocument.close(SaveOptions.NO);
+        } catch (_) { }
+
         csv = null;
-        $.sleep(300);
+        $.sleep(800);
 
-        // FECHAR TEMPLATE BASE
-        docBase.close(SaveOptions.NO);
+    }
 
+    // ======================================================
+    // MOVIMENTAÇÃO FINAL DAS PASTAS (APÓS TODO O PROCESSAMENTO)
+    // ======================================================
+
+    for (var key in orderState) {
+
+        var state = orderState[key];
+
+        // Se não tem motivo para mover, não move
+        if (!state.hasBlacklist && !state.hasMissingTemplate) {
+            continue;
+        }
+
+        var destino = null;
+
+        if (state.hasMissingTemplate) {
+            destino = missingBaseFolder;
+            log("Movendo pedido para _SEM_BASE: " + state.folder.name);
+
+        } else if (state.hasBlacklist) {
+            destino = ignoredFolder;
+            log("Movendo pedido para _MANUAL: " + state.folder.name);
+        }
+
+        if (destino) {
+
+            try {
+                // tentativa nativa
+                state.folder.move(destino);
+                log("Movido via ExtendScript: " + state.folder.name);
+
+            } catch (_) {
+
+                // fallback obrigatório via AppleScript (Finder)
+                try {
+                    var as =
+                        'tell application "Finder"\n' +
+                        'move folder (POSIX file "' + state.folder.fsName + '") to folder (POSIX file "' + destino.fsName + '")\n' +
+                        'end tell';
+
+                    app.doScript(as, ScriptLanguage.applescriptLanguage);
+                    log("Movido via AppleScript: " + state.folder.name);
+
+                } catch (e) {
+                    log("ERRO AO MOVER: " + state.folder.name + " → " + e.message);
+                }
+            }
+        }
     }
 
     // ======================================================
@@ -573,7 +655,7 @@
         "Batch finalizado.\n\n" +
         "Processados: " + processedFiles + "\n" +
         "Erros: " + errorCount + "\n" +
-        "Ignorados (movidos): " + totalBlacklistedFiles + "\n" +
+        "Arquivos manuais movidos: " + totalBlacklistedFiles + "\n" +
         "Templates faltando:";
 
     var missingTemplates = false;
@@ -589,7 +671,7 @@
     log("FIM DO LOTE: " + new Date());
     log("Processados: " + processedFiles);
     log("Erros: " + errorCount);
-    log("Ignorados (movidos): " + totalBlacklistedFiles);
+    log("Arquivos manuais movidos: " + totalBlacklistedFiles);
     if (missingTemplates) {
         log("Templates faltando (SKUs):");
         for (var k in missingTemplateCounter) {
