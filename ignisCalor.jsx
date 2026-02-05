@@ -1,11 +1,14 @@
 // ignisCalor.jsx
-// Batch CSV → SKU → Template → Data Merge → Limpeza → Exportação   
+// Batch CSV → SKU → Template → Data Merge → Limpeza → Exportação → Distribuição   
 // Versão 4.0
 // Dev: Alyssa Ferreiro @Sagittae-UX
 
-// Esse script automatiza o processo de diagramação em lote no Adobe InDesign,
-// atuando como o novo motor central para a tarefa de mesclagem preliminar de
-// processamento de pedidos de forma compreensiva para facilitar o preflight.
+// Esse script foi produzido baseado no sistema provisório de ferramentas de 
+// diagramação, unindo as etapas individuais em apenas um sistema que engloba a mescla, limpeza e 
+// processamento de lotes de produto baseados em especificações pré estabelecidas. O script possui blocos 
+// configuráveis no início que devem ser alterados de acordo com o usuário e à medida que arquivos forem 
+// emendados para a lista de processamento manual.
+// Em caso de dúvidas ou necessidade de patches, entrar em contato com a dev >:3c
 
 
 // RECURSOS PRINCIPAIS:
@@ -18,43 +21,40 @@
 // - Processamento dinâmico de acordo com condicionais presentes no pedido.
 // - Separação de pedidos sem template e marcados como manuais para as pastas relevantes. 
 // - Registro detalhado de processos, erros, pedidos manuais e templates faltando em um arquivo de log.
+// - Fallback para evitar duplicatas de arquivos já processados, tornando o plugin seguro para múltiplos passes.
 
 
 // INSTRUÇÕES DE USO:
-// 1. Configure as variáveis no início do script:
+
+// 1. Adicione o script à pasta de scripts do Adobe InDesign através da janela de utilitários de scripts.No menu lateral,
+//    clique "Revelar no Finder" para encontrar o destino de salvamento correto.
+
+// 2. Configure as variáveis no início do script:
 //    - exportPreset: Nome do preset de exportação PDF padronizado para produção, escrito de forma exata.
 //    - entryFolder: Caminho da pasta de produção contendo os pedidos baixados do Magento.
 //    - rootFolder: Caminho da pasta de templates contendo os arquivos .indt.
 //    - userID: Nome do diagramador para registro no documento exportado.
 
-// 2. Adicione SKUs problemáticos ou determinados como impossíveis de automatizar quando necessário. 
-//    Os arquivos serão catalogados e movidos para a pasta "_MANUAL", onde deverão ser processados manualmente.
+// 3. Adicione SKUs problemáticos ou determinados como impossíveis de automatizar sempre que necessário. 
+//    Os arquivos serão mesclados, salvos, catalogados e movidos para a pasta "_MANUAL". Pedidos que não
+//    possuem template válido na pasta raiz serão enviados para a pasta "_SEM_BASE".
+//    Ao fim do processo, conferir as pastas e processar os arquivos restantes.
 
-// 3. Adicione o script à pasta de scripts do Adobe InDesign através da janela de utilitários de scripts.
-//    Recomenda-se criar uma subpasta específica para scripts personalizados, e um atalho para fácil execução.
-
-// 4. Abrir o Adobe InDesign, na janela de utilitários de scripts, executar o script. Recomenda-se
+// 4. Abrir o Adobe InDesign, na janela de utilitários, executar o script. Recomenda-se
 //    a criação de um atalho para facilitar o uso (Editar > Atalhos do Teclado > Área do produto: Scripts).
 
 // 5. Ao final do processamento, um relatório será gerado na pasta de entrada,
-//    detalhando o número de arquivos processados, erros encontrados e SKUs movidos.
 
-// 6. Faça o preflight dos arquivos, atentando-se a erros estéticos.
-
-// 7. Caso faltem templates para determinados SKUs, esses serão listados no relatório final. Ao fim do
+// 6. Caso faltem templates para determinados SKUs, esses serão listados no relatório final. Ao fim do
 //    processamento, atentar-se a essa pasta e processar os arquivos restantes com o script após a
 //    criação das bases. O mesmo processo se aplica a SKU's marcados para processamento manual.
 
-// 8. Ajustar e incluir bases conforme necessário, adicionando o SKU entre aspas e respeitando a sintaxe abaixo:
+// 7. Após o lote estar completamente diagramado, limpar as pastas de template e processamento manual 
+//    e faça o preflight dos arquivos, atentando-se a erros estéticos. 
 
-// ignoredSKUs {
-//     "MD890": true,
-//     "AB123": true
-// };
+// 8. Encaminhar os arquivos para a pasta de fechamento no dia relevante.
 
-// Em caso de dúvidas ou necessidade de suporte, entre em contato com Alyssa Ferreiro @Sagittae-UX >:3c
-
-(function () {
+(function ignisCalor() {
 
     // ======================================================
     // CONFIGURAÇÕES - MUDANÇAS AQUI
@@ -62,20 +62,25 @@
 
     var exportPreset = "Diagramacao2025"; //Preset exata padronizada para produção
 
-    var entryFolder = Folder("~/Documents/PRODUCAO"); //Colar o caminho de arquivo da pasta de entrada aqui ou determinar caminho padrão
-    var rootFolder = Folder("~/Documents/TEMPLATES"); //Colar o caminho de arquivo da pasta de templates aqui ou determinar caminho padrão
+    var entryFolder = Folder("~/Documents/PRODUCAO"); //Colar o caminho de arquivo da pasta de entrada aqui
+
+    var rootFolder = Folder("~/Documents/TEMPLATES"); //Colar o caminho de arquivo da pasta de templates aqui
 
     var userID = "Alyssa"; //Nome do diagramador para registro no documento exportado
-
-    var csvTarget = /\.csv$/i;
 
     // ======================================================
     // LISTA NEGRA - SKUs PARA PROCESSAMENTO MANUAL AQUI
     // ======================================================
 
-    // Referir-se ao passo 8 das instruções acima para sintaxe correta.
     // Lista reservada para chancelas, itens complexos demais para diagramação automática 
     // ou arquivos antigos não adequados para o script.
+    // Ajustar e incluir bases conforme necessário, adicionando o SKU exato como
+    // aparece no site, entre aspas e separando por vírgula, como no exemplo abaixo:
+
+    // var ignoredSKUs {
+    //     "MD####": true,
+    //     "CA0000": true
+    // };
 
     var ignoredSKUs = {
         "MD890": true,
@@ -100,13 +105,13 @@
     log("\n========================================");
     log("INÍCIO DO LOTE: " + new Date());
     log("Usuário: " + userID);
-    log("Pasta de entrada: " + entryFolder.fsName);
     log("========================================\n");
 
     // ======================================================
     // CONTADORES DE ERRO / CONTROLE
     // ======================================================
 
+    // Contadores zerados
     var processedFiles = 0;
     var errorCount = 0;
     var totalBlacklistedFiles = 0;
@@ -133,11 +138,10 @@
     // VALIDAÇÕES INICIAIS
     // ======================================================
 
-    // Check para pastas de entrada e templates. Tomar cuidado ao alterar os caminhos
-    // pois o script será abortado caso estejam incorretos.
+    // Check para pastas de entrada e templates. Tomar cuidado ao alterar os caminhos,
+    // o script será abortado caso estejam incorretos.
     if (!entryFolder.exists || !rootFolder.exists) {
-        alert("Erro: O caminho da pasta de produção ou templates não foi encontrado.\nVerifique as configurações no início do script e cole o caminho de arquivo na line 'var entryFolder' e 'var rootFolder'.");
-        log("Erro: Caminho de pasta inválido.");
+        alert("Erro: O caminho da pasta de produção ou templates não foi encontrado.\nVerifique as configurações no início do script e cole o caminho de arquivo na linha 'var entryFolder' e 'var rootFolder'.");
         return;
     }
 
@@ -149,9 +153,11 @@
     // BUSCA RECURSIVA DE CSVs
     // ======================================================
 
+    var csvTarget = /\.csv$/i;
+
     function csvCollect(rootDirectory) {
 
-        var results = [];
+        var results = []; // Array contendo a quantidade de CSVs individuais
 
         function parse(pasta) {
 
@@ -210,7 +216,8 @@
         var csvCell = txt.split(/\r\n|\n|\r/);
         if (csvCell.length < 2) return null;
 
-        var cols = parseCSVLine(csvCell[1]); // IMPORTANTE: Caso a coluna do CSV mude, trocar aqui, atentando-se ao fato de que arrays começam do 0
+        // IMPORTANTE: Caso a coluna do CSV mude, trocar aqui, atentando-se ao fato de que arrays começam do 0
+        var cols = parseCSVLine(csvCell[1]);
         if (cols.length < 2) return null;
 
         return cols[1].replace(/^\s+|\s+$/g, "");
@@ -265,10 +272,8 @@
         for (var s = 0; s < doc.stories.length; s++) {
 
             var story = doc.stories[s];
-
             var containers = story.textContainers;
             var skipStory = false;
-
             for (var c = 0; c < containers.length; c++) {
                 try {
                     if (
@@ -295,7 +300,7 @@
                     story.characters[idx].remove();
                     story.characters[idx].remove();
 
-                    // Força um backspace lógico: remove 1 caractere antes, se existir
+                    // Backspace após a limpaza para deletar a linha
                     if (idx - 1 >= 0) {
                         try {
                             story.characters[idx - 1].remove();
@@ -321,7 +326,6 @@
             var item = allFrames[k];
 
             try {
-                // Remover frames de texto vazios
                 if (item instanceof TextFrame && !item.locked) {
                     if (item.contents.replace(/\s+/g, "") === "") {
                         item.remove();
@@ -335,6 +339,7 @@
                         item.remove();
                     }
                 }
+
             } catch (e) {
             }
         }
@@ -348,7 +353,7 @@
     // saiam com o nome de fallback (Nome do diagramador) Usar o site regex101.com para validação.
     function serialNumberGen(doc, fallback) {
 
-        var regex = /^\d{2,}\s*-\s*\d{2,}_\d{5,}-[A-Z0-9]+$/; // <----------Alterar aqui
+        var regex = /^\d{2,}\s*-\s*\d{2,}_\d{5,}-[A-Z0-9]+$/; // Alterar aqui
 
         for (var s = 0; s < doc.stories.length; s++) {
             var csvCell = doc.stories[s].contents.split(/[\r\n]+/);
@@ -383,7 +388,6 @@
             };
         }
 
-
         var csv = csvFiles[i];
         // Evita reprocessar pedidos já diagramados
         var existingINDDs = csv.parent.getFiles(function (f) {
@@ -395,9 +399,8 @@
         if (existingINDDs.length > 0) {
             log("INDD já existente na pasta: " + csv.parent.name);
             orderState[orderKey].hasExistingINDD = true;
-            skipMerge = true; // apenas impede a diagramação
+            skipMerge = true;
         }
-
 
         var orderPath = csv.parent.fsName;
 
@@ -418,7 +421,6 @@
 
         log("SKU identificado: " + sku);
 
-        // ===== CLASSIFICAÇÃO ANTECIPADA (sempre ocorre) =====
         if (isIgnoredSKU(sku)) {
             orderState[orderKey].hasBlacklist = true;
 
@@ -431,7 +433,6 @@
             log("SKU em blacklist identificado.");
         }
 
-
         var template = File(rootFolder + "/" + sku + ".indt");
         if (!template.exists) {
 
@@ -443,13 +444,11 @@
             log("TEMPLATE FALTANDO: " + sku);
             orderState[orderKey].hasMissingTemplate = true;
 
-            // não mescla, mas já classificou
             continue;
         }
 
-        // Já existe INDD → não mesclar novamente
         if (skipMerge) {
-            log("Pedido já diagramado → pulando mescla.");
+            log("Pedido duplicado → pulando mescla.");
             continue;
         }
 
@@ -465,7 +464,6 @@
         }
 
         var mergedDocument = mergeFile(docBase);
-
         if (!mergedDocument) {
             errorCount++;
             log("ERRO: Falha na mesclagem: " + csv.name);
@@ -474,26 +472,18 @@
         }
 
         if (isIgnoredSKU(sku)) {
-
             log("SKU em blacklist → fluxo manual com INDD salvo.");
-
-            // Nome primeiro
             var exportName = serialNumberGen(mergedDocument, sku);
-
-            // SALVA IMEDIATAMENTE APÓS A MESCLA (sem limpeza)
             try {
                 var inddFile = File(csv.parent + "/" + exportName + ".indd");
                 mergedDocument.save(inddFile);
-                log("INDD SALVO (manual, sem limpeza): " + inddFile.fsName);
+                log("Arquivo manual detectado: " + inddFile.fsName);
             } catch (e) {
                 log("ERRO ao salvar INDD manual: " + e.message);
             }
 
-            // AGORA SIM aplica identificação e limpeza
             userIdentifier(mergedDocument, userID);
             fileCleanup(mergedDocument);
-
-            // ===== ORDEM CORRETA DO DATAMERGE =====
             try {
                 docBase.dataMergeProperties.removeDataSource();
             } catch (_) { }
@@ -505,7 +495,6 @@
             try {
                 mergedDocument.close(SaveOptions.NO);
             } catch (_) { }
-
             $.sleep(800);
 
             log("Pedido marcado para _MANUAL ao final.");
@@ -523,15 +512,12 @@
         }
 
         userIdentifier(mergedDocument, userID);
-
         fileCleanup(mergedDocument);
 
         var exportName = serialNumberGen(mergedDocument, sku);
         var pasta = csv.parent;
-
         try {
             var inddFile = File(pasta + "/" + exportName + ".indd");
-
             var pdfFile = File(pasta + "/" + exportName + ".pdf");
 
             mergedDocument.save(inddFile);
@@ -556,7 +542,6 @@
             } catch (e) { }
 
             log("EXPORTADO:");
-
             log("  INDD → " + inddFile.fsName);
             log("  PDF  → " + pdfFile.fsName);
 
@@ -595,17 +580,18 @@
     // MOVIMENTAÇÃO FINAL DAS PASTAS (APÓS TODO O PROCESSAMENTO)
     // ======================================================
 
+    // Módulo suplementar para mover as pastas de pedido com arquivos sem template ou 
+    // marcados como manuais para pastas extras para serem facilmente encontrados.
+
     for (var key in orderState) {
 
         var state = orderState[key];
 
-        // Se não tem motivo para mover, não move
         if (!state.hasBlacklist && !state.hasMissingTemplate) {
             continue;
         }
 
         var destino = null;
-
         if (state.hasMissingTemplate) {
             destino = missingBaseFolder;
             log("Movendo pedido para _SEM_BASE: " + state.folder.name);
@@ -616,15 +602,11 @@
         }
 
         if (destino) {
-
             try {
-                // tentativa nativa
                 state.folder.move(destino);
-                log("Movido via ExtendScript: " + state.folder.name);
+                log("Movido: " + state.folder.name);
 
             } catch (_) {
-
-                // fallback obrigatório via AppleScript (Finder)
                 try {
                     var as =
                         'tell application "Finder"\n' +
@@ -632,7 +614,7 @@
                         'end tell';
 
                     app.doScript(as, ScriptLanguage.applescriptLanguage);
-                    log("Movido via AppleScript: " + state.folder.name);
+                    log("Movido: " + state.folder.name);
 
                 } catch (e) {
                     log("ERRO AO MOVER: " + state.folder.name + " → " + e.message);
