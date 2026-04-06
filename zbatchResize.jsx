@@ -5,12 +5,33 @@ var canvasHeight = 1350;
 
 var inputFolder = Folder.selectDialog("Selecione a pasta com os arquivos a serem redimensionados");
 
+// ==========================
+// FUNÇÃO RECURSIVA
+// ==========================
+function getFilesRecursive(folder, fileList) {
+    var files = folder.getFiles();
+
+    for (var i = 0; i < files.length; i++) {
+        var file = files[i];
+
+        if (file instanceof Folder) {
+            // entra na subpasta
+            getFilesRecursive(file, fileList);
+        } else if (file instanceof File && file.name.match(/\.(jpg|jpeg|png)$/i)) {
+            fileList.push(file);
+        }
+    }
+}
+
+// ==========================
+
 if (inputFolder) {
 
-    var files = inputFolder.getFiles(/\.(jpg|jpeg)$/i);
+    var files = [];
+    getFilesRecursive(inputFolder, files);
 
     if (files.length === 0) {
-        alert("Erro: Nenhum arquivo encontrado na pasta de output.");
+        alert("Erro: Nenhum arquivo encontrado na pasta e subpastas.");
     } else {
 
         for (var i = 0; i < files.length; i++) {
@@ -22,7 +43,7 @@ if (inputFolder) {
 
             var item = doc.pageItems[0];
 
-            // Trocando para tamanho de canvas
+            // Escala proporcional pela largura
             var currentWidth = item.width;
             var size = (canvasWidth / currentWidth) * 100;
 
@@ -46,7 +67,7 @@ if (inputFolder) {
                 centerY + (item.height / 2)
             ];
 
-            // Exportação
+            // Exportação (mantém na mesma pasta do original)
             var baseName = doc.name.replace(/\.[^\.]+$/, "");
             var output = new File(doc.path + "/" + baseName + ".jpg");
 

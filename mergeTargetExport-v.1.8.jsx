@@ -1,6 +1,7 @@
 // mergeTargetExport.jsx
-// Script para InDesign que realiza a substituição de um marcador "diagramado_por_NOME" pelo nome do usuário, procura um padrão específico de nome no texto para nomear o arquivo salvo, e exporta o documento como .indd e .pdf usando uma predefinição específica.
-// Versão 1.8
+// Script para InDesign que realiza a substituição de um marcador "diagramado_por_NOME" pelo nome do usuário, 
+// procura um padrão específico de nome no texto para nomear o arquivo salvo, e exporta o documento como .indd e .pdf usando uma predefinição específica.
+// Versão 1.9
 // Dev: Alyssa Ferreiro / @Sagittae-UX
 
 // ATENÇÃO: Instruções ao usuário
@@ -41,7 +42,7 @@
 
     // --- Passo 2: procurar RegEx do nome final
 
-    var regexNomeArquivo = /^\d+\s*-\s*\d+_\d{5,}-\d{4,}[A-Z]{2,}\d*$/;
+    var regexNomeArquivo = /^(\d{2,})\s*-\s*(\d{2,})[-_](\d{4,})[-_]([A-Z]{2,}\d{3,})$/;
     var nomeEncontrado = null;
 
     for (var j = 0; j < doc.stories.length; j++) {
@@ -116,6 +117,7 @@
         doc.exportFile(ExportFormat.pdfType, caminhoPDF, false, preset);
 
         try {
+            // Fecha janela do Finder
             var as =
                 'tell application "Finder"\n' +
                 '    if (count of windows) > 0 then\n' +
@@ -124,6 +126,15 @@
                 'end tell';
 
             app.doScript(as, ScriptLanguage.applescriptLanguage);
+
+            // Traz o InDesign para frente e garante foco
+            var asFocus =
+                'tell application "Adobe InDesign"\n' +
+                '    activate\n' +
+                'end tell';
+
+            app.doScript(asFocus, ScriptLanguage.applescriptLanguage);
+
         } catch (e) { }
 
     } catch (e) {
