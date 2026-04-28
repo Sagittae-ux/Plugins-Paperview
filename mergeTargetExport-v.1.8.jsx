@@ -42,16 +42,18 @@
 
     // --- Passo 2: procurar RegEx do nome final
 
-    var regexNomeArquivo = /^(\d{2,})\s*-\s*(\d{2,})[-_](\d{4,})[-_]([A-Z]{2,}\d{3,})$/;
+    var regexNomeArquivo = /^(\d{2,})\s*-\s*(\d{2,})[-_](\d{4,})[-_]([A-Z]{2,}\d*)$/;
     var nomeEncontrado = null;
 
     for (var j = 0; j < doc.stories.length; j++) {
         var conteudo = doc.stories[j].contents;
         var linhas = conteudo.split(/[\r\n]/);
+
         for (var k = 0; k < linhas.length; k++) {
-            var linha = linhas[k].replace(/^\s+|\s+$/g, ""); // trim
+            var linha = linhas[k]; // trim
+
             if (regexNomeArquivo.test(linha)) {
-                nomeEncontrado = linha;
+                nomeEncontrado = linha; // usa a linha inteira
                 break;
             }
         }
