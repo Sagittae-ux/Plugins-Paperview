@@ -334,14 +334,14 @@
                 continue;
             }
 
-            // Busca da chave \# para célula vazia
+            // Busca da chave para célula vazia
             try {
                 var contents = story.contents;
                 var idx;
 
-                while ((idx = contents.indexOf("\\#")) !== -1) {
+                while ((idx = contents.indexOf("\[SEM_TEXTO]")) !== -1) {
 
-                    // Remove o \#
+                    // Remove a chave de texto
                     story.characters[idx].remove();
                     story.characters[idx].remove();
 
