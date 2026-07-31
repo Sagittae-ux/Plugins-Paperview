@@ -1,6 +1,6 @@
 // ignisCalor.jsx
 // Batch CSV → SKU → Template → Data Merge → Limpeza → Exportação → Distribuição   
-// Versão 4.0
+// Versão 4.1
 // Dev: Alyssa Ferreiro @Sagittae-UX
 
 // Esse script foi produzido baseado no sistema provisório de ferramentas de 
@@ -8,7 +8,12 @@
 // processamento de lotes de produto baseados em especificações pré estabelecidas. O script possui blocos 
 // configuráveis no início que devem ser alterados de acordo com o usuário e à medida que arquivos forem 
 // emendados para a lista de processamento manual.
-// Em caso de dúvidas ou necessidade de patches, entrar em contato com a dev >:3c
+// Em caso de dúvidas ou necessidade de patches, entrar em contato com a dev.                       
+
+//              ♡  ╱|、
+//                (˚ˎ 。7  
+//                |、˜〵          
+//                じしˍ,)ノ
 
 
 // RECURSOS PRINCIPAIS:
@@ -84,8 +89,7 @@
     // };
 
     var ignoredSKUs = {
-        "MD890": true,
-        "MD664": true
+
     };
 
     // ======================================================
@@ -217,7 +221,7 @@
         var csvCell = txt.split(/\r\n|\n|\r/);
         if (csvCell.length < 2) return null;
 
-        // IMPORTANTE: Caso a coluna do CSV mude, trocar aqui, atentando-se ao fato de que arrays começam do 0
+        // Parser encontra a segunda coluna do .csv, que possui o SKU do pedido
         var cols = parseCSVLine(csvCell[1]);
         if (cols.length < 2) return null;
 
@@ -227,6 +231,60 @@
     // ======================================================
     // MESCLAGEM
     // ======================================================
+
+    function validateCSVLinks(csvFile) {
+        if (!csvFile || !csvFile.exists) return true;
+
+        var folder = csvFile.parent;
+        var lines = [];
+
+        try {
+            csvFile.encoding = "UTF-16";
+            if (!csvFile.open("r")) return true;
+            var txt = csvFile.read();
+            csvFile.close();
+            lines = txt.split(/\r\n|\n|\r/);
+        } catch (e) {
+            log("ERRO: Não foi possível ler o CSV para validar links: " + csvFile.name);
+            return false;
+        }
+
+        if (lines.length < 2) return true;
+
+        var header = parseCSVLine(lines[0]);
+        var imgColIndex = -1;
+        for (var i = 0; i < header.length; i++) {
+            if (header[i].indexOf('@IMG') === 0) {
+                imgColIndex = i;
+                break;
+            }
+        }
+
+        if (imgColIndex < 0) return true;
+
+        for (var r = 1; r < lines.length; r++) {
+            if (!lines[r]) continue;
+
+            var cells = parseCSVLine(lines[r]);
+            if (imgColIndex >= cells.length) continue;
+
+            var rawPath = cells[imgColIndex];
+            if (!rawPath) continue;
+
+            var imgFile = new File(rawPath);
+            if (!imgFile.exists) {
+                imgFile = new File(folder.absoluteURI + "/" + rawPath);
+            }
+
+            if (!imgFile.exists) {
+                log("ERRO: Link MISSING - " + rawPath + " (CSV: " + csvFile.name + ")");
+                return false;
+            }
+        }
+
+        return true;
+    }
+
 
     function mergeFile(docBase) {
 
@@ -252,7 +310,10 @@
 
     function unicodeFallback(doc) {
 
-        // Função experimental para tentar determinar alcances de Unicode 
+        // Função experimental para tentar determinar alcances de Unicode
+        // Não foi deteminado como confiável para a eliminação de Unicodes problemáticos,
+        // mas o impacto no processamento que esse trecho de código foi determinado como vestigial
+        // para encorajar sua remoção.
 
         function badUnicode(code) {
 
@@ -329,21 +390,25 @@
                     }
                 } catch (_) { }
             }
-
+            
             if (skipStory) {
                 continue;
             }
 
-            // Busca da chave para célula vazia
+            // Busca da chave para célula vazia, determinada em reunião como [SEM_TEXTO]
             try {
                 var contents = story.contents;
                 var idx;
+                var token = "[SEM_TEXTO]";
 
-                while ((idx = contents.indexOf("\[SEM_TEXTO]")) !== -1) {
+                while ((idx = contents.indexOf(token)) !== -1) {
 
                     // Remove a chave de texto
-                    story.characters[idx].remove();
-                    story.characters[idx].remove();
+                    for (var i = idx + token.length - 1; i >= idx; i--) {
+                        try {
+                            story.characters[i].remove();
+                        } catch (_) { }
+                    }
 
                     // Backspace após a limpeza para deletar a linha
                     if (idx - 1 >= 0) {
@@ -357,6 +422,16 @@
 
             } catch (_) { }
         }
+
+        // Funções suplementares a serem implantadas:
+        // Regex para limpeza de barras de espaço irregulares
+        // Deletar + Backspace
+        // Espaços em branco sem texto ou quebra de linha = "^\ \h*?$"
+
+        // GREP de substituição
+        // Um ou mais espaços em branco que precedem uma linha e não possuem nada antes = ^\ {1,}\b
+        // Um ou mais espaços em branco após uma linha que não possuem nada depois = \b\ {1,}$
+        // Espaços duplos no meio de palavras = \b\s{2,}\b
 
         app.findGrepPreferences.findWhat = "\\\\n";
         app.changeGrepPreferences.changeTo = "\\n";
@@ -378,7 +453,7 @@
                     }
                 }
 
-                // Remover frames sem imagem
+                // Remover frames sem imagem. Atentar-se a bases com quadros vazios não travados no InDesign
                 if (item instanceof Rectangle && !item.locked) {
                     if (item.graphics.length === 0 && item.allGraphics.length === 0) {
                         item.remove();
@@ -504,6 +579,14 @@
         } catch (_) {
             errorCount++;
             log("ERRO: Falha ao abrir template ou associar CSV: " + csv.name);
+            try { docBase.close(SaveOptions.NO); } catch (_) { }
+            continue;
+        }
+
+        if (!validateCSVLinks(csv)) {
+            errorCount++;
+            log("ERRO: Links ausentes no CSV, pulando mesclagem: " + csv.name);
+            try { docBase.dataMergeProperties.removeDataSource(); } catch (_) { }
             try { docBase.close(SaveOptions.NO); } catch (_) { }
             continue;
         }
@@ -692,10 +775,11 @@
     }
 
     var msg =
-        "Batch finalizado.\n\n" +
+        "Lote finalizado ദ്ദി◝ ⩊ ◜.ᐟ\n\n" +
+        "Total de pedidos: " + csvFiles.length + "\n" +
         "Processados: " + processedFiles + "\n" +
         "Erros: " + errorCount + "\n" +
-        "Arquivos manuais movidos: " + totalBlacklistedFiles + "\n" +
+        "Enviados para manual: " + totalBlacklistedFiles + "\n" +
         "Templates faltando:";
 
     var missingTemplates = false;
