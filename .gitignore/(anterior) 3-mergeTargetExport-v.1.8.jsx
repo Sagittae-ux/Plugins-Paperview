@@ -1,7 +1,6 @@
 // mergeTargetExport.jsx
-// Script para InDesign que realiza a substituição de um marcador "diagramado_por_NOME" pelo nome do usuário, 
-// procura um padrão específico de nome no texto para nomear o arquivo salvo, e exporta o documento como .indd e .pdf usando uma predefinição específica.
-// Versão 1.9
+// Script para InDesign que realiza a substituição de um marcador "diagramado_por_NOME" pelo nome do usuário, procura um padrão específico de nome no texto para nomear o arquivo salvo, e exporta o documento como .indd e .pdf usando uma predefinição específica.
+// Versão 1.8
 // Dev: Alyssa Ferreiro / @Sagittae-UX
 
 // ATENÇÃO: Instruções ao usuário
@@ -18,7 +17,7 @@
 
     // Área de alteração de nome do diagramador, faça a alteração apenas aqui:
 
-    var nomeUsuario = "Alyssa"; // <<<---------------------------------------- altere aqui para mudar o nome
+    var nomeUsuario = "Nick"; // <<<---------------------------------------- altere aqui para mudar o nome
     var nomeBase = "documento"; // fallback inicial
 
     // --- Passo 1: procurar "diagramado_por_NOME" e executar a assinatura do usuário
@@ -42,22 +41,16 @@
 
     // --- Passo 2: procurar RegEx do nome final
 
-<<<<<<< HEAD
-    var regexNomeArquivo = /^(\d{2,})\s*-\s*(\d{2,})[-_](\d{4,})[-_]([A-Z]{2,}\d*)$/;
-=======
-    var regexNomeArquivo = /^(\d{2,})\s*-\s*(\d{2,})_(\d{5,})-([A-Z0-9]+)$/;
->>>>>>> main
+    var regexNomeArquivo = /^\d+\s*-\s*\d+_\d{5,}-[A-Z]{2,}\d*$/;
     var nomeEncontrado = null;
 
     for (var j = 0; j < doc.stories.length; j++) {
         var conteudo = doc.stories[j].contents;
         var linhas = conteudo.split(/[\r\n]/);
-
         for (var k = 0; k < linhas.length; k++) {
-            var linha = linhas[k]; // trim
-
+            var linha = linhas[k].replace(/^\s+|\s+$/g, ""); // trim
             if (regexNomeArquivo.test(linha)) {
-                nomeEncontrado = linha; // usa a linha inteira
+                nomeEncontrado = linha;
                 break;
             }
         }
@@ -123,7 +116,6 @@
         doc.exportFile(ExportFormat.pdfType, caminhoPDF, false, preset);
 
         try {
-            // Fecha janela do Finder
             var as =
                 'tell application "Finder"\n' +
                 '    if (count of windows) > 0 then\n' +
@@ -132,15 +124,6 @@
                 'end tell';
 
             app.doScript(as, ScriptLanguage.applescriptLanguage);
-
-            // Traz o InDesign para frente e garante foco
-            var asFocus =
-                'tell application "Adobe InDesign"\n' +
-                '    activate\n' +
-                'end tell';
-
-            app.doScript(asFocus, ScriptLanguage.applescriptLanguage);
-
         } catch (e) { }
 
     } catch (e) {
