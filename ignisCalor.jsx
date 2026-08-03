@@ -4,16 +4,22 @@
 // Dev: Alyssa Ferreiro @Sagittae-UX
 
 // Esse script foi produzido baseado no sistema provisório de ferramentas de 
-// diagramação, unindo as etapas individuais em apenas um sistema que engloba a mescla, limpeza e 
-// processamento de lotes de produto baseados em especificações pré estabelecidas. O script possui blocos 
-// configuráveis no início que devem ser alterados de acordo com o usuário e à medida que arquivos forem 
+// diagramação, consolidando processos de busca de produto, mescla, padronização, revisões corretivas e exportação em um
+// motor de processamento específico para a empresa.
+// O script possui blocos configuráveis no início que devem ser alterados de acordo com o usuário e à medida que arquivos forem 
 // emendados para a lista de processamento manual.
-// Em caso de dúvidas ou necessidade de patches, entrar em contato com a dev.                       
+// Em caso de dúvidas ou necessidade de patches, entrar em contato com a dev.
 
-//              ♡  ╱|、
-//                (˚ˎ 。7  
-//                |、˜〵          
-//                じしˍ,)ノ
+// v4.1
+// Recursos adicionais em teste nesse patch:
+// - Regularizador de nomes próprios para prevenção do erro de fontes cursivas
+//   tendo que ser revisadas manualmente para troca de caixa de título
+// - Medidas preventivas contra espaços duplos e espaços antes do começo de frases
+
+//         ♡  ╱|、
+//           (˚ˎ 。7
+//           |、˜〵       
+//           じしˍ,)ノ
 
 
 // RECURSOS PRINCIPAIS:
@@ -32,33 +38,40 @@
 
 // INSTRUÇÕES DE USO:
 
-// 1. Adicione o script à pasta de scripts do Adobe InDesign através da janela de utilitários de scripts.No menu lateral,
-//    clique "Revelar no Finder" para encontrar o destino de salvamento correto.
+// 1. Adicionar o script a pasta de scripts do Adobe InDesign através de Janela > Utilitários > Scripts.
+//    No menu lateral, clique "Revelar no Finder" para encontrar o destino de salvamento correto.
 
-// 2. Configure as variáveis no início do script:
+// 2. Configurar as variáveis no início do script:
 //    - exportPreset: Nome do preset de exportação PDF padronizado para produção, escrito de forma exata.
 //    - entryFolder: Caminho da pasta de produção contendo os pedidos baixados do Magento.
 //    - rootFolder: Caminho da pasta de templates contendo os arquivos .indt.
 //    - userID: Nome do diagramador para registro no documento exportado.
 
-// 3. Adicione SKUs problemáticos ou determinados como impossíveis de automatizar sempre que necessário. 
+// 3. Adicionar SKUs problemáticos ou determinados como impossíveis de automatizar sempre que necessário. 
 //    Os arquivos serão mesclados, salvos, catalogados e movidos para a pasta "_MANUAL". Pedidos que não
 //    possuem template válido na pasta raiz serão enviados para a pasta "_SEM_BASE".
 //    Ao fim do processo, conferir as pastas e processar os arquivos restantes.
 
-// 4. Abrir o Adobe InDesign, na janela de utilitários, executar o script. Recomenda-se
+// 4. Baixar e extrair o lote a ser processado na pasta de input, de nome PRODUCAO.
+
+// 5. Abrir o Adobe InDesign, na janela de utilitários, executar o script. Recomenda-se
 //    a criação de um atalho para facilitar o uso (Editar > Atalhos do Teclado > Área do produto: Scripts).
 
-// 5. Ao final do processamento, um relatório será gerado na pasta de entrada,
+// 6. Ao final do processamento, um relatório será gerado na caixa de diálogo, detalhando o tamanho do lote, erros e
+//    templates faltando por SKU. Um relatório detalhado do processamento de cada item individualmente, detalhando cada
+//    erro será criado no mesmo local da pasta contendo o lote.
 
-// 6. Caso faltem templates para determinados SKUs, esses serão listados no relatório final. Ao fim do
-//    processamento, atentar-se a essa pasta e processar os arquivos restantes com o script após a
-//    criação das bases. O mesmo processo se aplica a SKU's marcados para processamento manual.
+// 7. Caso existam templates faltando, checar os produtos, adicionar à pasta de templates e executar o script novamente. 
+//    Diagramar os arquivos marcados para processamento manual utilizando as ferramentas anteriores de revisão e exportação.
 
-// 7. Após o lote estar completamente diagramado, limpar as pastas de template e processamento manual 
-//    e faça o preflight dos arquivos, atentando-se a erros estéticos. 
+// 8. Após o lote estar completamente diagramado, faça o preflight dos arquivos, atentando-se a erros estéticos. 
 
-// 8. Encaminhar os arquivos para a pasta de fechamento no dia relevante.
+// 9. Unir os pedidos e encaminhar os arquivos para a pasta de fechamento no dia relevante.
+
+// 10. Tome um segundo do tempo economizado para apreciar que isso já demorou um minuto e meio por item
+//     para as pessoas mais experientes e depois nunca mais pense nisso porque agora apreciamos a beleza e perfeição
+//     da era das máquinas.
+
 
 (function ignisCalor() {
 
@@ -96,6 +109,8 @@
     // LOG DE PROCESSO
     // ======================================================
 
+    // Configuração do relatório de processo
+
     var logFile = File(entryFolder.fsName + "/!relatório.txt");
 
     function log(msg) {
@@ -129,15 +144,208 @@
     // CRIAÇÃO DA PASTA DE IGNORADOS / TEMPLATES AUSENTES
     // ======================================================   
 
+    // Pasta de arquivos manuais
     var ignoredFolder = Folder(entryFolder + "/_MANUAL");
     if (!ignoredFolder.exists) {
         ignoredFolder.create();
     }
-
+    // Captura de pedidos sem base ou erros de SKU
     var missingBaseFolder = Folder(entryFolder + "/_SEM_BASE");
     if (!missingBaseFolder.exists) {
         missingBaseFolder.create();
     }
+
+    // ======================================================
+    // FUNÇÃO EXPERIMENTAL: REGULARIZAÇÃO DE NOME
+    // ======================================================
+
+    // A função abaixo tem como objetivo regularizar a entrada de nomes próprios no sistema,
+    // visando evitar o maior erro conhecido da diagramação com a entrada de nomes próprios em
+    // caixa alta em pedidos onde a fonte é case sensitive. Manter essa função comentada exceto em ambientes de teste,
+    // pendente aprovação da gerência para o uso no fluxo normal de trabalho
+
+    function titleCase(str) {
+
+        if (!str) return str;
+
+        // normaliza espaços e força caixa baixa
+        str = str.replace(/^\s+|\s+$/g, "").toLowerCase();
+
+        return str;
+    }
+
+    // Parser CSV completo: retorna array de registros
+    function parseCSV(content) {
+        var records = [];
+        var i = 0;
+        var len = content.length;
+        var field = "";
+        var record = [];
+        var inQuotes = false;
+
+        while (i < len) {
+            var ch = content[i];
+
+            if (inQuotes) {
+                if (ch === '"') {
+                    var next = content[i + 1];
+                    if (next === '"') {
+                        field += '"';
+                        i += 2;
+                        continue;
+                    } else {
+                        inQuotes = false;
+                        i++;
+                        continue;
+                    }
+                } else {
+                    field += ch;
+                    i++;
+                    continue;
+                }
+            } else {
+                if (ch === '"') {
+                    inQuotes = true;
+                    i++;
+                    continue;
+                } else if (ch === ',') {
+                    record.push(field);
+                    field = "";
+                    i++;
+                    continue;
+                } else if (ch === '\r') {
+                    var next = content[i + 1];
+                    if (next === '\n') i++;
+                    record.push(field);
+                    records.push(record);
+                    record = [];
+                    field = "";
+                    i++;
+                    continue;
+                } else if (ch === '\n') {
+                    record.push(field);
+                    records.push(record);
+                    record = [];
+                    field = "";
+                    i++;
+                    continue;
+                } else {
+                    field += ch;
+                    i++;
+                    continue;
+                }
+            }
+        }
+
+        record.push(field);
+
+        if (!(record.length === 1 && record[0] === "" && records.length > 0)) {
+            records.push(record);
+        }
+        return records;
+    }
+
+    // Criação de novo .csv
+    function buildCSV(records) {
+        var lines = [];
+        for (var r = 0; r < records.length; r++) {
+            var cols = records[r];
+            var outCols = [];
+            for (var c = 0; c < cols.length; c++) {
+                var val = cols[c] == null ? "" : String(cols[c]);
+                var needsQuote = val.indexOf('"') >= 0 || val.indexOf(',') >= 0 || val.indexOf('\n') >= 0 || val.indexOf('\r') >= 0 || /^\s|\s$/.test(val);
+                if (val.indexOf('"') >= 0) val = val.replace(/"/g, '""');
+                if (needsQuote) val = '"' + val + '"';
+                outCols.push(val);
+            }
+            lines.push(outCols.join(","));
+        }
+        return lines.join("\r\n");
+    }
+
+    // Busca de colunas de nome para regularização da caixa de texto
+    function processCSV(file) {
+        if (!file.exists) return;
+        if (!file.open("r")) return;
+        var content = file.read();
+        file.close();
+
+        var records = parseCSV(content);
+        if (!records || records.length < 2) return;
+
+        // Caso a coluna de nome se manifeste de alguma outra maneira, inclua aqui 
+        var headers = records[0];
+        var nomeIndex = -1;
+        var targetHeaders = {
+            "DIGITE_O_NOME_A_SER_IMPRESSO": true,
+            "DIGITE_O_NOME_A_SER_IMPRESSO_NA_CAPA": true
+        };
+
+        for (var h = 0; h < headers.length; h++) {
+
+            var header = headers[h]
+                .replace(/^"|"$/g, "")
+                .replace(/^\s+|\s+$/g, "");
+
+            if (targetHeaders[header]) {
+                nomeIndex = h;
+                break;
+            }
+        }
+        if (nomeIndex === -1) return;
+
+        for (var r = 1; r < records.length; r++) {
+            var row = records[r];
+            if (!row || row.length === 0) continue;
+            var val = row[nomeIndex];
+            if (val) {
+                row[nomeIndex] = titleCase(val);
+            }
+            records[r] = row;
+        }
+
+        // Cria backup do arquivo .csv processado caso seja necessário usar um .csv limpo ou consultas eventuais
+        var backup = new File(file.fullName + ".bak");
+        try {
+
+            if (backup.exists) backup.remove();
+            file.copy(backup);
+        } catch (e) {
+
+        }
+
+        if (!file.open("w")) return;
+        file.encoding = "UTF-16"; // Importante manter UTF-16, encoding usado no InDesign
+        file.lineFeed = "Windows";
+        file.write(buildCSV(records));
+        file.close();
+    }
+
+    // Função evita que arquivos sejam processados novamente quando o script é executado de novo
+    function scanFolder(folder) {
+
+        if (!folder.exists) return;
+
+        var items = folder.getFiles();
+        var csvProcessed = false;
+
+        for (var i = 0; i < items.length; i++) {
+
+            var item = items[i];
+
+            if (item instanceof Folder) {
+                scanFolder(item);
+
+            } else if (!csvProcessed && item instanceof File && item.name.match(/\.csv$/i)) {
+
+                processCSV(item);
+                csvProcessed = true;
+            }
+        }
+    }
+
+    scanFolder(entryFolder);
+
 
     // ======================================================
     // VALIDAÇÕES INICIAIS
@@ -150,6 +358,7 @@
         return;
     }
 
+    // Puxa a lista de SKU's ignorados para comparação com a lista do lote.
     function isIgnoredSKU(sku) {
         return ignoredSKUs[sku] === true;
     }
@@ -198,7 +407,7 @@
     // PARSER DE CSV
     // ======================================================
 
-    // Importante: essa função assume que o CSV possui o SKU na segunda coluna.
+    // Busca de SKU através da posição no .csv
     function parseCSVLine(line) {
         var r = [], c = "", q = false;
         for (var i = 0; i < line.length; i++) {
@@ -231,6 +440,7 @@
     // ======================================================
     // MESCLAGEM
     // ======================================================
+
 
     function validateCSVLinks(csvFile) {
         if (!csvFile || !csvFile.exists) return true;
@@ -271,6 +481,10 @@
             var rawPath = cells[imgColIndex];
             if (!rawPath) continue;
 
+            if (rawPath.indexOf("Nao_Desejo") !== -1 || rawPath.indexOf("nao_desejo") !== -1) {
+                continue;
+            }
+
             var imgFile = new File(rawPath);
             if (!imgFile.exists) {
                 imgFile = new File(folder.absoluteURI + "/" + rawPath);
@@ -308,12 +522,16 @@
         return null;
     }
 
-    function unicodeFallback(doc) {
+    // ======================================================
+    // FUNÇÃO EXPERIMENTAL: FALLBACK PARA UNICODE
+    // ======================================================
 
-        // Função experimental para tentar determinar alcances de Unicode
-        // Não foi deteminado como confiável para a eliminação de Unicodes problemáticos,
-        // mas o impacto no processamento que esse trecho de código foi determinado como vestigial
-        // para encorajar sua remoção.
+    // Função experimental para tentar determinar alcances de Unicode
+    // Não foi deteminado como confiável para a eliminação de Unicodes problemáticos,
+    // mas o impacto no processamento que esse trecho de código foi determinado como vestigial
+    // para encorajar sua remoção.
+
+    function unicodeFallback(doc) {
 
         function badUnicode(code) {
 
@@ -390,16 +608,16 @@
                     }
                 } catch (_) { }
             }
-            
+
             if (skipStory) {
                 continue;
             }
 
-            // Busca da chave para célula vazia, determinada em reunião como [SEM_TEXTO]
+            // Busca da chave para célula vazia, determinada em reunião como *Não Desejo
             try {
                 var contents = story.contents;
                 var idx;
-                var token = "[SEM_TEXTO]";
+                var token = "*Não Desejo";
 
                 while ((idx = contents.indexOf(token)) !== -1) {
 
@@ -423,9 +641,8 @@
             } catch (_) { }
         }
 
-        // Funções suplementares a serem implantadas:
-        // Regex para limpeza de barras de espaço irregulares
-        // Deletar + Backspace
+
+
         // Espaços em branco sem texto ou quebra de linha = "^\ \h*?$"
 
         // GREP de substituição
@@ -435,6 +652,14 @@
 
         app.findGrepPreferences.findWhat = "\\\\n";
         app.changeGrepPreferences.changeTo = "\\n";
+        doc.changeGrep();
+
+        app.findGrepPreferences.findWhat = " {2,}";
+        app.changeGrepPreferences.changeTo = " ";
+        doc.changeGrep();
+
+        app.findGrepPreferences.findWhat = "^\\s+";
+        app.changeGrepPreferences.changeTo = "";
         doc.changeGrep();
 
         app.findGrepPreferences = NothingEnum.nothing;
