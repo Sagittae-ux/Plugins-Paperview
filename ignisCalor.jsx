@@ -403,6 +403,36 @@
     var csvFiles = csvCollect(entryFolder);
     log("CSVs encontrados: " + csvFiles.length);
 
+    function findTemplate(sku) {
+        if (!sku) return null;
+
+        var directTemplate = File(rootFolder.fsName + "/" + sku + ".indt");
+        if (directTemplate.exists) {
+            return directTemplate;
+        }
+
+        function search(folder) {
+            var items = folder.getFiles();
+            for (var i = 0; i < items.length; i++) {
+                var item = items[i];
+
+                if (item instanceof File && item.name.toLowerCase() === sku.toLowerCase() + ".indt") {
+                    return item;
+                }
+
+                if (item instanceof Folder) {
+                    var found = search(item);
+                    if (found) {
+                        return found;
+                    }
+                }
+            }
+            return null;
+        }
+
+        return search(rootFolder);
+    }
+
     // ======================================================
     // PARSER DE CSV
     // ======================================================
@@ -481,7 +511,7 @@
             var rawPath = cells[imgColIndex];
             if (!rawPath) continue;
 
-            if (rawPath.indexOf("Nao_Desejo") !== -1 || rawPath.indexOf("nao_desejo") !== -1) {
+            if (rawPath.indexOf("Desejo") !== -1 || rawPath.indexOf("desejo") !== -1) {
                 continue;
             }
 
@@ -778,8 +808,8 @@
             log("SKU em blacklist identificado.");
         }
 
-        var template = File(rootFolder + "/" + sku + ".indt");
-        if (!template.exists) {
+        var template = findTemplate(sku);
+        if (!template || !template.exists) {
 
             if (!missingTemplateCounter[sku]) {
                 missingTemplateCounter[sku] = [];
